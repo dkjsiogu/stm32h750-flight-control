@@ -1,0 +1,94 @@
+#include "flight_control/control/speed_controller.hpp"
+
+#include <algorithm>
+#include <cmath>
+
+#include "flight_control/config.hpp"
+
+namespace flight_control {
+
+SpeedController::SpeedController(SpeedControllerConfig config)
+    : config_(config) {}
+
+void SpeedController::reset(const Quaternion& current_attitude) {
+    integral_xy_ = {};
+    integral_z_ = 0.0f;
+    yaw_target_ = to_euler_zyx(current_attitude).z;
+    yaw_initialized_ = true;
+}
+
+AttitudeSetpoint SpeedController::update(const VehicleState& state, const GuidanceCommand& command, float dt_sec) {
+    if (!command.armed || !state.healthy) {
+        reset(state.attitude);
+        return {};
+    }
+
+    if (!yaw_initialized_) {
+        reset(state.attitude);
+    }
+
+    const float dt = std::max(dt_sec, 1e-4f);
+    const float climb_rate = std::clamp(command.climb_rate_m_s, -config_.max_climb_rate_m_s, config_.max_climb_rate_m_s);
+    const float yaw_rate = std::clamp(command.yaw_rate_rad_s, -config_.max_yaw_rate_rad_s, config_.max_yaw_rate_rad_s);
+
+    const Vector3 velocity_error{
+        command.target_velocity_m_s.x - state.velocity_m_s.x,
+        command.target_velocity_m_s.y - state.velocity_m_s.y,
+        climb_rate - state.velocity_m_s.z,
+    };
+
+    integral_xy_.x = std::clamp(integral_xy_.x + velocity_error.x * dt, -config_.integral_limit_xy, config_.integral_limit_xy);
+    integral_xy_.y = std::clamp(integral_xy_.y + velocity_error.y * dt, -config_.integral_limit_xy, config_.integral_limit_xy);
+    integral_z_ = std::clamp(integral_z_ + velocity_error.z * dt, -config_.integral_limit_z, config_.integral_limit_z);
+
+    Vector3 acceleration_xy{
+        config_.kp_xy * velocity_error.x + config_.ki_xy * integral_xy_.x,
+        config_.kp_xy * velocity_error.y + config_.ki_xy * integral_xy_.y,
+        0.0f,
+    };
+    acceleration_xy = clamp_magnitude(acceleration_xy, config_.max_accel_xy_m_s2);
+
+    const float acceleration_z = std::clamp(
+        config_.kp_z * velocity_error.z + config_.ki_z * integral_z_,
+        -config_.max_accel_z_m_s2,
+        config_.max_accel_z_m_s2);
+
+    yaw_target_ = wrap_angle(yaw_target_ + yaw_rate * dt);
+
+    const Vector3 acceleration{
+        acceleration_xy.x,
+        acceleration_xy.y,
+        acceleration_z,
+    };
+    const Quaternion target_attitude = attitude_from_acceleration(acceleration, yaw_target_);
+
+    const Vector3 thrust_vector{acceleration.x, acceleration.y, kGravity + acceleration.z};
+    const float collective = std::clamp(config_.mass_kg * norm(thrust_vector) / config_.max_total_thrust_n, 0.0f, 1.0f);
+
+    return {
+        target_attitude,
+        collective,
+        acceleration,
+        yaw_target_,
+    };
+}
+
+Quaternion SpeedController::attitude_from_acceleration(const Vector3& acceleration, float yaw_target_rad) const {
+    const float vertical = std::max(0.25f * kGravity, kGravity + acceleration.z);
+    const float sin_yaw = std::sin(yaw_target_rad);
+    const float cos_yaw = std::cos(yaw_target_rad);
+
+    float roll = std::atan2(acceleration.x * sin_yaw - acceleration.y * cos_yaw, vertical);
+    float pitch = std::atan2(acceleration.x * cos_yaw + acceleration.y * sin_yaw, vertical);
+
+    const float tilt = std::sqrt(roll * roll + pitch * pitch);
+    if (tilt > config_.max_tilt_rad && tilt > 1e-6f) {
+        const float scale = config_.max_tilt_rad / tilt;
+        roll *= scale;
+        pitch *= scale;
+    }
+
+    return from_euler_zyx(roll, pitch, yaw_target_rad);
+}
+
+}  // namespace flight_control

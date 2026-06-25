@@ -92,6 +92,11 @@ void SimulatedQuadPlant::step(const MotorPwmFrame& pwm, float dt_sec) {
     state_.battery_voltage_v = 16.4f - 0.018f * total_thrust;
 }
 
+void SimulatedQuadPlant::set_wind(const Vector3& wind_m_s) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    config_.wind_m_s = wind_m_s;
+}
+
 FlightTelemetry SimulatedQuadPlant::telemetry() const {
     std::lock_guard<std::mutex> lock(mutex_);
     const Vector3 gyro_jitter{

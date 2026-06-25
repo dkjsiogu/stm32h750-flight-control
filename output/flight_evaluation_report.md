@@ -1,0 +1,14 @@
+# Flight Control Closed-Loop Evaluation
+
+- policy: generated static MLP only
+- loop: SpeedController -> ModelAdapter -> TorqueController -> PWM -> motor lag -> rigid-body plant
+- stable scenarios: 5/5
+- average score: 83.9/100
+
+| Scenario | Stable | Score | Velocity RMS | Alt Drift | Max Tilt | PWM Sat | Recovery | Final z |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| hover_wind_bias | yes | 94.364 | 0.029 | 0.000 | 0.013 | 0.000 | 0.000 | 1.200 |
+| forward_cruise | yes | 88.095 | 0.011 | 0.015 | 0.020 | 0.000 | 0.976 | 1.199 |
+| gust_recovery | yes | 83.336 | 0.142 | 0.000 | 0.057 | 0.000 | 0.000 | 1.200 |
+| payload_motor_lag | yes | 76.969 | 0.062 | 0.379 | 0.007 | 0.000 | 0.000 | 1.089 |
+| climb_turn_cruise | yes | 76.824 | 0.068 | 1.160 | 0.028 | 0.000 | 0.096 | 2.284 |

@@ -27,6 +27,7 @@ public:
     explicit SimulatedQuadPlant(PlantConfig config = {});
 
     void step(const MotorPwmFrame& pwm, float dt_sec);
+    void set_wind(const Vector3& wind_m_s);
     FlightTelemetry telemetry() const;
     VehicleState state() const;
     MotorPwmFrame last_pwm() const;

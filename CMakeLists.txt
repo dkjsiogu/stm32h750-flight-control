@@ -11,6 +11,7 @@ add_library(flight_control_core
     src/control/speed_controller.cpp
     src/control/torque_controller.cpp
     src/data/history_window.cpp
+    src/eval/simulation_runner.cpp
     src/model/model_adapter.cpp
     src/model/generated_policy.cpp
     src/model/static_mlp_policy.cpp
@@ -31,6 +32,11 @@ add_executable(flight_control_demo
 )
 target_link_libraries(flight_control_demo PRIVATE flight_control_core Threads::Threads)
 
+add_executable(flight_control_eval
+    src/evaluate.cpp
+)
+target_link_libraries(flight_control_eval PRIVATE flight_control_core Threads::Threads)
+
 if(FLIGHT_CONTROL_BUILD_TESTS)
     enable_testing()
     add_executable(flight_control_tests
@@ -38,4 +44,10 @@ if(FLIGHT_CONTROL_BUILD_TESTS)
     )
     target_link_libraries(flight_control_tests PRIVATE flight_control_core Threads::Threads)
     add_test(NAME flight_control_tests COMMAND flight_control_tests)
+
+    add_executable(flight_control_system_tests
+        tests/system_eval_tests.cpp
+    )
+    target_link_libraries(flight_control_system_tests PRIVATE flight_control_core Threads::Threads)
+    add_test(NAME flight_control_system_tests COMMAND flight_control_system_tests)
 endif()

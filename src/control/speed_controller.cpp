@@ -15,6 +15,8 @@ void SpeedController::reset(const Quaternion& current_attitude) {
     integral_z_ = 0.0f;
     yaw_target_ = to_euler_zyx(current_attitude).z;
     yaw_initialized_ = true;
+    altitude_hold_target_m_ = 0.0f;
+    altitude_hold_initialized_ = false;
 }
 
 AttitudeSetpoint SpeedController::update(const VehicleState& state, const GuidanceCommand& command, float dt_sec) {
@@ -30,11 +32,25 @@ AttitudeSetpoint SpeedController::update(const VehicleState& state, const Guidan
     const float dt = std::max(dt_sec, 1e-4f);
     const float climb_rate = std::clamp(command.climb_rate_m_s, -config_.max_climb_rate_m_s, config_.max_climb_rate_m_s);
     const float yaw_rate = std::clamp(command.yaw_rate_rad_s, -config_.max_yaw_rate_rad_s, config_.max_yaw_rate_rad_s);
+    float vertical_velocity_target = climb_rate;
+    if (std::fabs(climb_rate) > 0.02f) {
+        altitude_hold_initialized_ = false;
+    } else {
+        if (!altitude_hold_initialized_) {
+            altitude_hold_target_m_ = state.position_m.z;
+            altitude_hold_initialized_ = true;
+        }
+        const float altitude_error = altitude_hold_target_m_ - state.position_m.z;
+        vertical_velocity_target += std::clamp(
+            config_.kp_altitude_hold * altitude_error,
+            -config_.max_altitude_correction_m_s,
+            config_.max_altitude_correction_m_s);
+    }
 
     const Vector3 velocity_error{
         command.target_velocity_m_s.x - state.velocity_m_s.x,
         command.target_velocity_m_s.y - state.velocity_m_s.y,
-        climb_rate - state.velocity_m_s.z,
+        vertical_velocity_target - state.velocity_m_s.z,
     };
 
     integral_xy_.x = std::clamp(integral_xy_.x + velocity_error.x * dt, -config_.integral_limit_xy, config_.integral_limit_xy);

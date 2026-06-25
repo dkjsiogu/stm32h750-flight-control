@@ -3,6 +3,7 @@
 #include <memory>
 
 #include "flight_control/app/flight_application.hpp"
+#include "flight_control/model/generated_policy.hpp"
 #include "flight_control/platform/host/simulated_components.hpp"
 
 int main() {
@@ -12,7 +13,7 @@ int main() {
     auto sensors = std::make_shared<MockSensorSource>(plant);
     auto commands = std::make_shared<MockCommandSource>();
     auto pwm_output = std::make_shared<MockPwmOutput>(plant);
-    auto policy = std::make_shared<HeuristicAttitudePolicy>();
+    auto policy = std::make_shared<StaticMlpPolicy>(make_generated_policy_weights());
     auto runner = std::make_shared<ThreadTaskRunner>();
 
     FlightApplication app({
@@ -21,7 +22,7 @@ int main() {
         commands,
         pwm_output,
         policy,
-    });
+    }, {}, {}, generated_model_config());
 
     std::cout << "boot: stm32h750 flight-control stack host demo\n";
     app.run_demo(std::chrono::seconds(8));
@@ -36,4 +37,3 @@ int main() {
               << '\n';
     return 0;
 }
-

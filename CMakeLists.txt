@@ -12,6 +12,7 @@ add_library(flight_control_core
     src/control/torque_controller.cpp
     src/data/history_window.cpp
     src/model/model_adapter.cpp
+    src/model/generated_policy.cpp
     src/model/static_mlp_policy.cpp
     src/runtime/task_runner.cpp
     src/app/flight_application.cpp

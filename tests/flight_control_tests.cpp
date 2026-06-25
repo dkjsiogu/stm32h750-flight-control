@@ -8,6 +8,7 @@
 #include "flight_control/control/torque_controller.hpp"
 #include "flight_control/data/history_window.hpp"
 #include "flight_control/model/model_adapter.hpp"
+#include "flight_control/model/generated_policy.hpp"
 #include "flight_control/model/static_mlp_policy.hpp"
 #include "flight_control/platform/host/simulated_components.hpp"
 
@@ -102,6 +103,16 @@ void test_static_mlp_zero_weights() {
           "zero static mlp weights produce zero output");
 }
 
+void test_generated_policy_is_finite() {
+    flight_control::StaticMlpPolicy policy(flight_control::make_generated_policy_weights());
+    std::array<float, flight_control::kModelInputDim> input{};
+    const auto output = policy.predict(input);
+    check(std::isfinite(output[0]) && std::isfinite(output[1]) && std::isfinite(output[2]),
+          "generated policy output is finite");
+    const auto config = flight_control::generated_model_config();
+    check(config.torque_limit_nm > 0.0f, "generated model config has torque scale");
+}
+
 void test_application_smoke() {
     auto plant = std::make_shared<flight_control::SimulatedQuadPlant>();
     auto sensors = std::make_shared<flight_control::MockSensorSource>(plant);
@@ -134,6 +145,7 @@ int main() {
     test_torque_controller_roll_mix();
     test_model_adapter();
     test_static_mlp_zero_weights();
+    test_generated_policy_is_finite();
     test_application_smoke();
     std::cout << "flight_control_tests passed\n";
     return 0;

@@ -37,5 +37,5 @@ ctest --test-dir build
 - Host 侧带一个简单的四旋翼模拟器，用来验证任务调度和控制链。
 - `include/flight_control/platform/freertos/` 预留了 STM32 + FreeRTOS 端口。
 - 神经网络策略通过 `IAttitudePolicy` 接口注入，输入维度固定为 4 帧 x 9 维。
-- `StaticMlpPolicy` 提供固定 36-64-64-3 MLP 推理后端，可接入从训练 checkpoint 导出的 C 数组权重。
-- Host demo 默认使用 `HeuristicAttitudePolicy` 作为没有权重文件时的 fallback，只用于验证调度和链路。
+- `StaticMlpPolicy` 提供固定 36-64-64-3 MLP 推理后端，当前已接入从 `checkpoints/latest.pt` 导出的 C++ 静态权重。
+- `HeuristicAttitudePolicy` 保留为没有权重文件时的 fallback，只用于验证调度和链路。

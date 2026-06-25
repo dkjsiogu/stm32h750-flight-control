@@ -5,8 +5,8 @@
 namespace flight_control {
 
 struct SpeedControllerConfig {
-    float mass_kg{1.45f};
-    float max_total_thrust_n{30.0f};
+    float mass_kg{1.0f};
+    float max_total_thrust_n{25.506f};
     float kp_xy{1.2f};
     float ki_xy{0.16f};
     float kp_z{1.8f};

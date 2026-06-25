@@ -10,15 +10,15 @@
 namespace flight_control {
 
 struct PlantConfig {
-    float mass_kg{1.45f};
-    float arm_length_m{0.175f};
+    float mass_kg{1.0f};
+    float arm_length_m{0.23f};
     float yaw_torque_coeff{0.018f};
-    float max_total_thrust_n{30.0f};
-    float max_motor_thrust_n{7.5f};
-    float motor_tau_sec{0.055f};
-    float angular_drag{0.045f};
-    float linear_drag{0.22f};
-    float quadratic_drag{0.05f};
+    float max_total_thrust_n{25.506f};
+    float max_motor_thrust_n{6.3765f};
+    float motor_tau_sec{0.045f};
+    float angular_drag{0.018f};
+    float linear_drag{0.18f};
+    float quadratic_drag{0.035f};
     Vector3 wind_m_s{0.6f, -0.2f, 0.0f};
 };
 

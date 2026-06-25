@@ -5,10 +5,10 @@
 namespace flight_control {
 
 struct TorqueControllerConfig {
-    float arm_length_m{0.175f};
+    float arm_length_m{0.23f};
     float yaw_torque_coeff{0.018f};
-    float max_total_thrust_n{30.0f};
-    float max_motor_thrust_n{7.5f};
+    float max_total_thrust_n{25.506f};
+    float max_motor_thrust_n{6.3765f};
     float pwm_min_us{1000.0f};
     float pwm_max_us{2000.0f};
     float pwm_slew_rate_us_per_sec{3500.0f};
@@ -30,4 +30,3 @@ private:
 };
 
 }  // namespace flight_control
-

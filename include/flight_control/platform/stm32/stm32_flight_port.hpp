@@ -1,5 +1,6 @@
 #pragma once
 
+#include "flight_control/estimation/state_estimator.hpp"
 #include "flight_control/interfaces/flight_interfaces.hpp"
 #include "flight_control/runtime/synchronization.hpp"
 
@@ -9,7 +10,7 @@ namespace flight_control {
  * STM32 传感器数据源。
  *
  * 从板级驱动 hook 读取 IMU、姿态估计、速度、位置和电池电压。
- * 该类只属于真实固件端口，不包含任何仿真环境或 host 真值。
+ * 该类只属于真实固件端口，不包含任何仿真环境或外部真值。
  */
 class Stm32SensorSource final : public ISensorSource {
 public:
@@ -19,6 +20,10 @@ public:
      * @return 由板级驱动和状态估计器提供的遥测数据。
      */
     FlightTelemetry read() override;
+
+private:
+    /** 固件端状态估计器，用于把原始传感器转换成控制状态。 */
+    StateEstimator estimator_{};
 };
 
 /**
@@ -69,17 +74,17 @@ public:
 extern "C" {
 
 /**
- * 板级传感器读取 hook。
+ * 板级原始传感器读取 hook。
  *
- * @param packet 输出原始传感器包。
- * @param state 输出状态估计结果。
+ * @param packet 输出原始 IMU、电池和可选低层观测数据。
+ * @param observation 输出外部姿态、速度、位置观测及有效标志。
  * @param estimated_wind_x_m_s 输出估计风速 x 分量，单位 m/s。
  * @param estimated_wind_y_m_s 输出估计风速 y 分量，单位 m/s。
  * @param control_latency_ms 输出控制链路估计延迟，单位 ms。
  */
-void flight_control_board_read_telemetry(
+void flight_control_board_read_sensors(
     flight_control::SensorPacket* packet,
-    flight_control::VehicleState* state,
+    flight_control::StateEstimatorObservation* observation,
     float* estimated_wind_x_m_s,
     float* estimated_wind_y_m_s,
     float* control_latency_ms);

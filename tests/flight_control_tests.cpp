@@ -7,12 +7,10 @@
 #include "flight_control/control/speed_controller.hpp"
 #include "flight_control/control/torque_controller.hpp"
 #include "flight_control/data/history_window.hpp"
+#include "flight_control/estimation/state_estimator.hpp"
 #include "flight_control/model/model_adapter.hpp"
 #include "flight_control/model/generated_policy.hpp"
 #include "flight_control/model/static_mlp_policy.hpp"
-#include "flight_control/platform/host/host_environment.hpp"
-#include "flight_control/platform/host/host_synchronization.hpp"
-#include "flight_control/platform/host/thread_task_runner.hpp"
 
 namespace {
 
@@ -99,6 +97,33 @@ void test_model_adapter() {
     check(policy->last_input.size() == flight_control::kModelInputDim, "model input dimension is fixed");
 }
 
+void test_state_estimator_stationary_observation() {
+    flight_control::StateEstimator estimator;
+    flight_control::SensorPacket packet{};
+    packet.timestamp_sec = 0.0f;
+    packet.accel_m_s2 = {0.0f, 0.0f, flight_control::kGravity};
+    packet.battery_voltage_v = 16.0f;
+
+    flight_control::StateEstimatorObservation observation{};
+    observation.position_valid = true;
+    observation.position_m = {0.0f, 0.0f, 1.2f};
+
+    auto state = estimator.update(packet, observation);
+    packet.timestamp_sec = flight_control::kDefaultControlPeriodSec;
+    state = estimator.update(packet, observation);
+
+    check(state.healthy, "state estimator accepts stationary valid imu");
+    check(std::fabs(state.position_m.z - 1.2f) < 1e-4f, "state estimator keeps observed altitude");
+    check(std::fabs(state.velocity_m_s.z) < 1e-3f, "state estimator keeps stationary vertical velocity small");
+}
+
+void test_state_estimator_rejects_zero_imu() {
+    flight_control::StateEstimator estimator;
+    flight_control::SensorPacket packet{};
+    const auto state = estimator.update(packet, {});
+    check(!state.healthy, "state estimator rejects missing imu acceleration");
+}
+
 void test_static_mlp_zero_weights() {
     auto weights = std::make_shared<flight_control::StaticMlpPolicyWeights>();
     flight_control::StaticMlpPolicy policy(weights);
@@ -118,32 +143,6 @@ void test_generated_policy_is_finite() {
     check(config.torque_limit_nm > 0.0f, "generated model config has torque scale");
 }
 
-void test_application_smoke() {
-    auto environment = std::make_shared<flight_control::HostFlightEnvironment>();
-    auto sensors = std::make_shared<flight_control::HostSensorSource>(environment);
-    auto commands = std::make_shared<flight_control::ScriptedCommandSource>();
-    auto pwm_output = std::make_shared<flight_control::HostPwmOutput>(environment);
-    auto policy = std::make_shared<flight_control::HeuristicAttitudePolicy>();
-    auto runner = std::make_shared<flight_control::ThreadTaskRunner>();
-    auto critical_section = std::make_shared<flight_control::HostMutexCriticalSection>();
-
-    flight_control::FlightApplication app({
-        runner,
-        sensors,
-        commands,
-        pwm_output,
-        policy,
-        critical_section,
-    });
-    app.run_for_ms(120U);
-
-    const auto telemetry = app.telemetry();
-    const auto solution = app.snapshot();
-    check(std::isfinite(telemetry.state.position_m.z), "application telemetry is finite");
-    check(solution.motor_pwm.pwm_us[0] >= 1000.0f && solution.motor_pwm.pwm_us[0] <= 2000.0f,
-          "application outputs bounded pwm");
-}
-
 }  // namespace
 
 int main() {
@@ -151,9 +150,10 @@ int main() {
     test_speed_controller_forward_pitch();
     test_torque_controller_roll_mix();
     test_model_adapter();
+    test_state_estimator_stationary_observation();
+    test_state_estimator_rejects_zero_imu();
     test_static_mlp_zero_weights();
     test_generated_policy_is_finite();
-    test_application_smoke();
     std::cout << "flight_control_tests passed\n";
     return 0;
 }

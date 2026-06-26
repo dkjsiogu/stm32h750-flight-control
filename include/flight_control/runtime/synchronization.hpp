@@ -5,7 +5,7 @@ namespace flight_control {
 /**
  * 临界区接口。
  *
- * 用于让飞控核心在 FreeRTOS、STM32 中断屏蔽或 host mutex 之间切换。
+ * 用于让飞控核心在 FreeRTOS、STM32 中断屏蔽或外部验证锁之间切换。
  * 核心应用层不直接包含 std::mutex，也不直接调用平台相关临界区 API。
  */
 class ICriticalSection {

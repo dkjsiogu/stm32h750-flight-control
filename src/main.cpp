@@ -9,7 +9,7 @@
  * STM32 固件主入口。
  *
  * 该入口只装配真实板级接口：传感器、速度指令、PWM 输出、FreeRTOS 任务和临界区。
- * host 仿真、闭环评估和文件输出全部在 PC 侧 target 中，不能进入这个入口。
+ * PC 侧仿真、闭环评估和文件输出全部在独立仿真仓库中，不能进入这个入口。
  */
 int main() {
     using namespace flight_control;

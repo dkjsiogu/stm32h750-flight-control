@@ -56,13 +56,13 @@ public:
     /**
      * 启动飞控实时任务。
      *
-     * 该函数只创建采集、控制和执行器任务，不包含任何仿真或 host 日志逻辑。
+     * 该函数只创建采集、控制和执行器任务，不包含任何仿真或文件日志逻辑。
      */
     void start();
     /**
      * 运行指定时长后停止。
      *
-     * @param duration_ms 运行时长，单位 ms；host 验证可使用，固件通常直接调用 start。
+     * @param duration_ms 运行时长，单位 ms；外部验证可使用，固件通常直接调用 start。
      */
     void run_for_ms(std::uint32_t duration_ms);
     /** 请求所有任务停止。 */

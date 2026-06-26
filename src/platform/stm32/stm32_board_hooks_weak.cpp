@@ -17,18 +17,17 @@ namespace {
 
 extern "C" {
 
-void FLIGHT_CONTROL_WEAK flight_control_board_read_telemetry(
+void FLIGHT_CONTROL_WEAK flight_control_board_read_sensors(
     flight_control::SensorPacket* packet,
-    flight_control::VehicleState* state,
+    flight_control::StateEstimatorObservation* observation,
     float* estimated_wind_x_m_s,
     float* estimated_wind_y_m_s,
     float* control_latency_ms) {
     if (packet) {
         *packet = {};
     }
-    if (state) {
-        *state = {};
-        state->healthy = false;
+    if (observation) {
+        *observation = {};
     }
     if (estimated_wind_x_m_s) {
         *estimated_wind_x_m_s = 0.0f;

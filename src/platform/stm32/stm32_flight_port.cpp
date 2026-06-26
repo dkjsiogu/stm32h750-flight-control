@@ -4,12 +4,14 @@ namespace flight_control {
 
 FlightTelemetry Stm32SensorSource::read() {
     FlightTelemetry telemetry{};
-    flight_control_board_read_telemetry(
+    StateEstimatorObservation observation{};
+    flight_control_board_read_sensors(
         &telemetry.raw,
-        &telemetry.state,
+        &observation,
         &telemetry.estimated_wind_x_m_s,
         &telemetry.estimated_wind_y_m_s,
         &telemetry.control_latency_ms);
+    telemetry.state = estimator_.update(telemetry.raw, observation);
     return telemetry;
 }
 

@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.3.0] - 2026-06-26
+
+### Added
+
+- **[estimation]**: 新增固件内 `StateEstimator`，融合 IMU 和可选外部姿态/速度/位置观测，输出控制器使用的估计状态。
+- **[boards]**: 新增 `boards/stm32h743` 可烧录工程骨架，包含 ARM toolchain、启动文件、linker script 和真实板级 hook 接入点。
+- **[boards]**: 新增 H743 newlib 系统调用桩、堆边界符号和 hex/bin 镜像生成 target。
+- **[tests]**: 扩展 `firmware_boundary_tests`，检查旧 host/eval 目录、旧评估 target 和训练工具不再存在于飞控仓库。
+
+### Changed
+
+- **[firmware]**: `Stm32SensorSource` 改为读取真实原始传感器和外部观测，由状态估计器生成 `VehicleState`，不再接受仿真真值。
+- **[docs]**: 更新 README 和知识库，明确飞控仓库只保留真机固件，PC 侧飞机/环境/训练/评估位于相邻仿真仓库 `../stm32h750-flight-sim`。
+
+### Removed
+
+- **[simulation]**: 从飞控仓库移除 host 环境、闭环评估器、host demo、策略搜索工具和评估输出产物；这些内容迁移到独立仿真仓库。
+
 ## [0.2.0] - 2026-06-26
 
 ### Added

@@ -9,7 +9,7 @@ namespace flight_control {
 /**
  * 任务运行器接口。
  *
- * 用于屏蔽 FreeRTOS、host 线程或其他实时调度器差异。
+ * 用于屏蔽 FreeRTOS、板级调度器或外部验证调度器差异。
  * 飞控核心只依赖这个抽象，不直接依赖 std::thread 或具体 RTOS API。
  */
 class ITaskRunner {

@@ -1,5 +1,6 @@
 #include <fstream>
 #include <iostream>
+#include <filesystem>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -34,6 +35,9 @@ void test_firmware_core_target_is_host_free() {
     check(!contains(target_block, "src/platform/host/"), "firmware core must not compile host platform sources");
     check(!contains(target_block, "src/eval/"), "firmware core must not compile evaluation sources");
     check(!contains(target_block, "src/host/"), "firmware core must not compile host demo sources");
+    check(!contains(cmake, "flight_control_host_support"), "firmware repository must not define host support target");
+    check(!contains(cmake, "flight_control_eval"), "firmware repository must not define evaluation executable");
+    check(!contains(cmake, "flight_control_policy_search"), "firmware repository must not define policy search executable");
 }
 
 void test_core_headers_do_not_expose_host_or_truth() {
@@ -53,11 +57,29 @@ void test_core_headers_do_not_expose_host_or_truth() {
     }
 }
 
+void test_simulation_sources_are_not_in_firmware_repository() {
+    const std::vector<std::string> forbidden_paths{
+        "include/flight_control/platform/host",
+        "include/flight_control/eval",
+        "src/platform/host",
+        "src/eval",
+        "src/host",
+        "src/evaluate.cpp",
+        "tools/policy_search.cpp",
+        "tools/export_linear_policy.py",
+    };
+
+    for (const std::string& path : forbidden_paths) {
+        check(!std::filesystem::exists(path), "simulation sources must live in the standalone sim repository");
+    }
+}
+
 }  // namespace
 
 int main() {
     test_firmware_core_target_is_host_free();
     test_core_headers_do_not_expose_host_or_truth();
+    test_simulation_sources_are_not_in_firmware_repository();
     std::cout << "firmware_boundary_tests passed\n";
     return 0;
 }

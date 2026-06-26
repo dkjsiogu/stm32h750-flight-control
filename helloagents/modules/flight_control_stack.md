@@ -22,5 +22,7 @@
 
 - `ClosedLoopEvaluator`: 确定性闭环评估入口。
 - `flight_control_eval`: 生成 CSV 指标和 Markdown 报告。
+- `flight_control_policy_search`: 只搜索姿态模型权重等价参数，不调速度外环和力矩混控参数。
+- `tools/export_linear_policy.py`: 将搜索得到的历史姿态策略导出成 `StaticMlpPolicy` 的静态 MLP 权重。
 - `flight_control_system_tests`: 把五个评估场景作为 CTest 回归门槛。
 - `firmware_boundary_tests`: 检查固件核心 target 不包含 host/eval/demo 源文件，核心头文件不暴露 host runner 或仿真真值。

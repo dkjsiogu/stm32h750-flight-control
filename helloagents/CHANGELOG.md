@@ -23,3 +23,5 @@
 ### Added
 
 - **[tests]**: 新增 `firmware_boundary_tests`，回归检查固件核心 target 不包含 host/eval/demo 源文件，核心头文件不暴露 host runner 或仿真真值。
+- **[model]**: 新增 `flight_control_policy_search` 和 `tools/export_linear_policy.py`，用于闭环搜索并导出静态 MLP 姿态模型权重。
+- **[model]**: 仅更新 NN 姿态模型权重，闭环评估从 `75.6/100` 提升到 `84.2/100`，5 个场景全部稳定。

@@ -19,3 +19,7 @@ SensorSource -> SpeedController -> ModelAdapter/StaticMlpPolicy -> TorqueControl
 ## 当前验证方式
 
 host 侧 `HostFlightEnvironment` 只用于 PC 验证，作为真实环境替身包含电机一阶滞后、PWM 非线性推力曲线、电机个体差异、风场/阵风、阻力、电池压降、传感器延迟、陀螺仪 bias/drift/jitter、姿态/速度/位置估计偏差。飞控核心不能读取仿真真值，只能通过 `ISensorSource` 获取估计遥测，通过 `IPwmOutput` 写 PWM。`flight_control_eval` 会运行悬停风偏、前向巡航、阵风恢复、重物慢电机、上升转弯巡航五个场景，并输出 `output/flight_evaluation_report.md`。
+
+## 当前模型状态
+
+姿态模型仍然是 `StaticMlpPolicy` 静态 MLP 权重。最近一次优化只调整模型权重等价参数，没有改速度外环和力矩混控参数；`flight_control_eval` 当前 5/5 场景稳定，平均分 `84.2/100`。

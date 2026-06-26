@@ -70,6 +70,11 @@ if(FLIGHT_CONTROL_BUILD_HOST_TOOLS)
         src/evaluate.cpp
     )
     target_link_libraries(flight_control_eval PRIVATE flight_control_host_support)
+
+    add_executable(flight_control_policy_search
+        tools/policy_search.cpp
+    )
+    target_link_libraries(flight_control_policy_search PRIVATE flight_control_host_support)
 endif()
 
 if(FLIGHT_CONTROL_BUILD_TESTS)

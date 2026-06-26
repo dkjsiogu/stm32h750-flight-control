@@ -47,6 +47,18 @@ SpeedController -> ModelAdapter -> StaticMlpPolicy -> TorqueController -> PWM ->
 
 `HostFlightEnvironment` 会模拟电机一阶滞后、PWM 非线性、电机个体差异、风场/阵风、阻力、电池压降、传感器延迟、陀螺仪 bias/drift/jitter、姿态/速度/位置估计偏差。飞控应用只能通过 `ISensorSource` 和 `IPwmOutput` 与它闭环。
 
+## 姿态模型优化
+
+当前姿态模型仍然是固件内的静态 MLP 权重，不依赖运行时训练框架。优化流程是：
+
+```bash
+cmake --build build --target flight_control_policy_search
+./build/flight_control_policy_search
+python3 tools/export_linear_policy.py
+```
+
+`flight_control_policy_search` 只搜索姿态模型权重等价参数，速度外环和力矩混控参数不参与调参。`export_linear_policy.py` 将最优历史策略精确导出为 `StaticMlpPolicy` 可执行的 36-64-64-3 权重。
+
 ## 构建与验证
 
 ```bash

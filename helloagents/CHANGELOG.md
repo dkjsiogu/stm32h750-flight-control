@@ -7,6 +7,7 @@
 - **[eval]**: 新增 host 闭环评估 runner、`flight_control_eval` CLI、系统评估 CTest。
 - **[eval]**: 增加悬停风偏、前向巡航、阵风恢复、重物慢电机、上升转弯巡航五个场景。
 - **[docs]**: 新增 `helloagents/` 知识库和 `output/flight_evaluation_report.md` 评估产物。
+- **[docs]**: 补齐飞控公共头文件的中文注释，覆盖类型、成员、函数参数和关键局部变量。
 
 ### Changed
 

@@ -31,11 +31,11 @@ int main() {
     float total_score = 0.0f;
     for (const auto& result : results) {
         check(result.metrics.stable, result.metrics.scenario_name.c_str());
-        check(result.metrics.score >= 60.0f, "closed-loop score should stay above realistic-environment scenario floor");
+        check(result.metrics.score >= 77.0f, "closed-loop score should stay above trained NN scenario floor");
         total_score += result.metrics.score;
     }
-    check(total_score / static_cast<float>(results.size()) >= 75.0f,
-          "closed-loop average score should stay above realistic-environment system floor");
+    check(total_score / static_cast<float>(results.size()) >= 84.0f,
+          "closed-loop average score should stay above trained NN system floor");
 
     std::cout << "flight_control_system_tests passed\n";
     return 0;

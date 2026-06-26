@@ -7,8 +7,8 @@
 
 namespace flight_control {
 
-/** 静态 MLP 隐藏层维度。 */
-constexpr std::size_t kStaticMlpHiddenDim = 64;
+/** 静态 MLP 单个隐藏层维度；当前导出模型使用 128-128 两层隐藏结构。 */
+constexpr std::size_t kStaticMlpHiddenDim = 128;
 /** 静态 MLP 输出维度，对应 roll、pitch、yaw 三轴归一化动作。 */
 constexpr std::size_t kStaticMlpOutputDim = 3;
 

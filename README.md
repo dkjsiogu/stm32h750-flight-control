@@ -34,10 +34,10 @@ ctest --test-dir build
 
 ## 闭环评估
 
-`flight_control_eval` 在 host 模拟器里复用正式控制链路：
+`flight_control_eval` 在 host 真实环境替身里复用正式控制链路：
 
 ```text
-SpeedController -> ModelAdapter -> StaticMlpPolicy -> TorqueController -> PWM -> motor lag -> rigid-body plant
+SpeedController -> ModelAdapter -> StaticMlpPolicy -> TorqueController -> PWM -> motor lag -> host truth dynamics
 ```
 
 运行：
@@ -61,7 +61,7 @@ SpeedController -> ModelAdapter -> StaticMlpPolicy -> TorqueController -> PWM ->
 
 ## 备注
 
-- Host 侧带一个简单的四旋翼模拟器，用来验证任务调度和控制链。
+- Host 侧带真实环境替身，用来验证任务调度、传感器延迟/漂移、执行链路和控制链。
 - `include/flight_control/platform/freertos/` 预留了 STM32 + FreeRTOS 端口。
 - 神经网络策略通过 `IAttitudePolicy` 接口注入，输入维度固定为 4 帧 x 9 维。
 - `StaticMlpPolicy` 提供固定 36-64-64-3 MLP 推理后端，当前已接入从 `checkpoints/latest.pt` 导出的 C++ 静态权重。

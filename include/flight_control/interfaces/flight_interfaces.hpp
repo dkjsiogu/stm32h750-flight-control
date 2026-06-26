@@ -9,7 +9,7 @@ namespace flight_control {
 /**
  * 传感器源接口。
  *
- * 任何真实硬件、记录回放或仿真器都可以实现这个接口，
+ * 任何真实硬件、记录回放或 host 环境都可以实现这个接口，
  * 供采集线程获取最新遥测数据。
  */
 class ISensorSource {
@@ -44,7 +44,7 @@ public:
 /**
  * PWM 输出接口。
  *
- * 执行器层通过这个接口把混控后的 PWM 帧写给硬件或仿真器。
+ * 执行器层通过这个接口把混控后的 PWM 帧写给真实硬件或 host 环境。
  */
 class IPwmOutput {
 public:

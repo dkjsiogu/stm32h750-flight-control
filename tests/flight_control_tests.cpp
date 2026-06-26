@@ -10,7 +10,7 @@
 #include "flight_control/model/model_adapter.hpp"
 #include "flight_control/model/generated_policy.hpp"
 #include "flight_control/model/static_mlp_policy.hpp"
-#include "flight_control/platform/host/simulated_components.hpp"
+#include "flight_control/platform/host/host_environment.hpp"
 
 namespace {
 
@@ -46,7 +46,10 @@ void test_speed_controller_forward_pitch() {
     command.armed = true;
     command.target_velocity_m_s = {1.2f, 0.0f, 0.0f};
 
-    const auto output = controller.update(state, command, flight_control::kDefaultControlPeriodSec);
+    flight_control::AttitudeSetpoint output{};
+    for (int sample = 0; sample < 24; ++sample) {
+        output = controller.update(state, command, flight_control::kDefaultControlPeriodSec);
+    }
     const auto euler = flight_control::to_euler_zyx(output.target_attitude);
     check(euler.y > 0.04f, "forward velocity requests positive pitch");
     check(output.collective > 0.25f, "forward command produces nonzero collective");
@@ -114,10 +117,10 @@ void test_generated_policy_is_finite() {
 }
 
 void test_application_smoke() {
-    auto plant = std::make_shared<flight_control::SimulatedQuadPlant>();
-    auto sensors = std::make_shared<flight_control::MockSensorSource>(plant);
-    auto commands = std::make_shared<flight_control::MockCommandSource>();
-    auto pwm_output = std::make_shared<flight_control::MockPwmOutput>(plant);
+    auto environment = std::make_shared<flight_control::HostFlightEnvironment>();
+    auto sensors = std::make_shared<flight_control::HostSensorSource>(environment);
+    auto commands = std::make_shared<flight_control::ScriptedCommandSource>();
+    auto pwm_output = std::make_shared<flight_control::HostPwmOutput>(environment);
     auto policy = std::make_shared<flight_control::HeuristicAttitudePolicy>();
     auto runner = std::make_shared<flight_control::ThreadTaskRunner>();
 

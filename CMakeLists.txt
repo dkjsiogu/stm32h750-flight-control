@@ -11,13 +11,13 @@ add_library(flight_control_core
     src/control/speed_controller.cpp
     src/control/torque_controller.cpp
     src/data/history_window.cpp
-    src/eval/simulation_runner.cpp
+    src/eval/closed_loop_evaluator.cpp
     src/model/model_adapter.cpp
     src/model/generated_policy.cpp
     src/model/static_mlp_policy.cpp
     src/runtime/task_runner.cpp
     src/app/flight_application.cpp
-    src/platform/host/simulated_components.cpp
+    src/platform/host/host_environment.cpp
 )
 
 target_include_directories(flight_control_core

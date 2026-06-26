@@ -1,4 +1,4 @@
-#include "flight_control/eval/simulation_runner.hpp"
+#include "flight_control/eval/closed_loop_evaluator.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -22,10 +22,10 @@ GuidanceCommand command_at(const std::vector<CommandSegment>& commands, float ti
     return selected;
 }
 
-void apply_wind_steps(SimulatedQuadPlant& plant, const std::vector<WindStep>& wind_steps, float last_time_sec, float time_sec) {
+void apply_wind_steps(HostFlightEnvironment& environment, const std::vector<WindStep>& wind_steps, float last_time_sec, float time_sec) {
     for (const auto& step : wind_steps) {
         if (step.start_sec > last_time_sec && step.start_sec <= time_sec) {
-            plant.set_wind(step.wind_m_s);
+            environment.set_wind(step.wind_m_s);
         }
     }
 }
@@ -49,7 +49,7 @@ Vector3 target_velocity_from_command(const GuidanceCommand& command) {
     };
 }
 
-float score_from_metrics(const SimulationMetrics& metrics, const MetricLimits& limits) {
+float score_from_metrics(const EvaluationMetrics& metrics, const MetricLimits& limits) {
     const float velocity_cost = 34.0f * metrics.velocity_rms_m_s / std::max(limits.max_velocity_rms_m_s, 1e-4f);
     const float altitude_cost = 18.0f * metrics.altitude_drift_m / std::max(limits.max_altitude_drift_m, 1e-4f);
     const float tilt_cost = 18.0f * metrics.max_tilt_rad / std::max(limits.max_tilt_rad, 1e-4f);
@@ -58,7 +58,7 @@ float score_from_metrics(const SimulationMetrics& metrics, const MetricLimits& l
     return std::clamp(100.0f - velocity_cost - altitude_cost - tilt_cost - saturation_cost - recovery_cost, 0.0f, 100.0f);
 }
 
-bool is_stable(const SimulationMetrics& metrics, const MetricLimits& limits) {
+bool is_stable(const EvaluationMetrics& metrics, const MetricLimits& limits) {
     return std::isfinite(metrics.final_position_m.z) &&
            std::isfinite(metrics.velocity_rms_m_s) &&
            metrics.final_position_m.z > 0.12f &&
@@ -84,26 +84,26 @@ MetricLimits limits(float velocity_rms, float altitude_drift, float tilt, float 
 
 }  // namespace
 
-SimulationRunner::SimulationRunner(std::shared_ptr<IAttitudePolicy> policy)
+ClosedLoopEvaluator::ClosedLoopEvaluator(std::shared_ptr<IAttitudePolicy> policy)
     : policy_(std::move(policy)) {
     if (!policy_) {
-        throw std::invalid_argument("SimulationRunner policy must not be null");
+        throw std::invalid_argument("ClosedLoopEvaluator policy must not be null");
     }
 }
 
-SimulationResult SimulationRunner::run(const EvaluationScenario& scenario) const {
-    SimulatedQuadPlant plant(scenario.plant_config);
+EvaluationResult ClosedLoopEvaluator::run(const EvaluationScenario& scenario) const {
+    HostFlightEnvironment environment(scenario.environment_config);
     SpeedController speed_controller(scenario.speed_config);
     TorqueController torque_controller(scenario.torque_config);
     ModelAdapter model_adapter(policy_, scenario.model_config);
 
-    speed_controller.reset(plant.state().attitude);
+    speed_controller.reset(environment.telemetry().state.attitude);
     torque_controller.reset();
     model_adapter.reset();
 
     const float dt = kDefaultControlPeriodSec;
     const int steps = std::max(1, static_cast<int>(std::ceil(scenario.duration_sec / dt)));
-    const float initial_altitude = plant.state().position_m.z;
+    const float initial_altitude = environment.truth_state().position_m.z;
 
     double velocity_error_sum = 0.0;
     double horizontal_velocity_error_sum = 0.0;
@@ -113,7 +113,8 @@ SimulationResult SimulationRunner::run(const EvaluationScenario& scenario) const
     int saturated_channels = 0;
     int pwm_channels = 0;
     float max_tilt = 0.0f;
-    float max_altitude_drift = 0.0f;
+    float max_altitude_error = 0.0f;
+    float reference_altitude = initial_altitude;
     float recovery_time = std::max(0.0f, scenario.duration_sec - scenario.recovery_start_sec);
     float settled_duration = 0.0f;
     bool recovered = false;
@@ -123,20 +124,21 @@ SimulationResult SimulationRunner::run(const EvaluationScenario& scenario) const
     GuidanceCommand command = command_at(scenario.commands, 0.0f);
     for (int step = 0; step < steps; ++step) {
         const float time = static_cast<float>(step) * dt;
-        apply_wind_steps(plant, scenario.wind_steps, last_time, time);
+        apply_wind_steps(environment, scenario.wind_steps, last_time, time);
         last_time = time;
 
-        const FlightTelemetry telemetry = plant.telemetry();
+        const FlightTelemetry telemetry = environment.telemetry();
         command = command_at(scenario.commands, time);
         const AttitudeSetpoint attitude = speed_controller.update(telemetry.state, command, dt);
         const TorqueCommand torque = model_adapter.update(telemetry.state, attitude);
         const MotorPwmFrame pwm = torque_controller.mix(attitude.collective, torque, dt);
         latest_solution = {attitude, torque, pwm};
-        plant.step(pwm, dt);
+        environment.step(pwm, dt);
 
-        const VehicleState state = plant.state();
+        const VehicleState state = environment.truth_state();
         const Vector3 target_velocity = target_velocity_from_command(command);
         const Vector3 velocity_error = state.velocity_m_s - target_velocity;
+        reference_altitude += command.climb_rate_m_s * dt;
         const float horizontal_error = std::sqrt(velocity_error.x * velocity_error.x + velocity_error.y * velocity_error.y);
         const float vertical_error = std::fabs(velocity_error.z);
         const float attitude_error = attitude_error_angle_rad(attitude.target_attitude, state.attitude);
@@ -148,7 +150,7 @@ SimulationResult SimulationRunner::run(const EvaluationScenario& scenario) const
             vertical_velocity_error_sum += vertical_error * vertical_error;
             attitude_error_sum += attitude_error * attitude_error;
             max_tilt = std::max(max_tilt, current_tilt);
-            max_altitude_drift = std::max(max_altitude_drift, std::fabs(state.position_m.z - initial_altitude));
+            max_altitude_error = std::max(max_altitude_error, std::fabs(state.position_m.z - reference_altitude));
             ++metric_samples;
 
             for (const float pwm_us : latest_solution.motor_pwm.pwm_us) {
@@ -171,15 +173,15 @@ SimulationResult SimulationRunner::run(const EvaluationScenario& scenario) const
         }
     }
 
-    const VehicleState final_state = plant.state();
+    const VehicleState final_state = environment.truth_state();
     const float sample_count = static_cast<float>(std::max(metric_samples, 1));
-    SimulationMetrics metrics{};
+    EvaluationMetrics metrics{};
     metrics.scenario_name = scenario.name;
     metrics.velocity_rms_m_s = std::sqrt(static_cast<float>(velocity_error_sum / sample_count));
     metrics.horizontal_velocity_rms_m_s = std::sqrt(static_cast<float>(horizontal_velocity_error_sum / sample_count));
     metrics.vertical_velocity_rms_m_s = std::sqrt(static_cast<float>(vertical_velocity_error_sum / sample_count));
     metrics.attitude_error_rms_rad = std::sqrt(static_cast<float>(attitude_error_sum / sample_count));
-    metrics.altitude_drift_m = max_altitude_drift;
+    metrics.altitude_drift_m = max_altitude_error;
     metrics.max_tilt_rad = max_tilt;
     metrics.pwm_saturation_ratio = pwm_channels > 0 ? static_cast<float>(saturated_channels) / static_cast<float>(pwm_channels) : 0.0f;
     metrics.recovery_time_sec = recovery_time;
@@ -204,12 +206,15 @@ SpeedControllerConfig optimized_speed_controller_config() {
     config.max_tilt_rad = 0.74f;
     config.integral_limit_xy = 3.6f;
     config.integral_limit_z = 4.5f;
+    config.max_accel_xy_slew_m_s3 = 7.2f;
+    config.max_accel_z_slew_m_s3 = 5.2f;
     return config;
 }
 
 TorqueControllerConfig optimized_torque_controller_config() {
     TorqueControllerConfig config{};
-    config.pwm_slew_rate_us_per_sec = 4800.0f;
+    config.thrust_curve_exponent = 1.18f;
+    config.pwm_slew_rate_us_per_sec = 5600.0f;
     return config;
 }
 
@@ -262,9 +267,10 @@ std::vector<EvaluationScenario> default_evaluation_scenarios(const ModelAdapterC
     payload.duration_sec = 8.0f;
     payload.metrics_start_sec = 1.5f;
     payload.recovery_start_sec = 1.5f;
-    payload.plant_config.mass_kg = 1.22f;
-    payload.plant_config.motor_tau_sec = 0.09f;
-    payload.plant_config.wind_m_s = {0.4f, -0.15f, 0.0f};
+    payload.environment_config.payload_mass_kg = 0.20f;
+    payload.environment_config.motor_tau_sec = {0.085f, 0.095f, 0.090f, 0.100f};
+    payload.environment_config.wind_m_s = {0.4f, -0.15f, 0.0f};
+    payload.environment_config.gust_amplitude_m_s = {0.12f, 0.08f, 0.02f};
     payload.speed_config = speed_config;
     payload.torque_config = torque_config;
     payload.model_config = model_config;
@@ -289,7 +295,7 @@ std::vector<EvaluationScenario> default_evaluation_scenarios(const ModelAdapterC
     return {hover, cruise, gust, payload, climb};
 }
 
-std::string format_metrics_table(const std::vector<SimulationResult>& results) {
+std::string format_metrics_table(const std::vector<EvaluationResult>& results) {
     std::ostringstream output;
     output << "scenario,stable,score,vel_rms,horiz_rms,vert_rms,alt_drift,max_tilt,pwm_sat,recovery,final_z\n";
     output << std::fixed << std::setprecision(3);
@@ -310,7 +316,7 @@ std::string format_metrics_table(const std::vector<SimulationResult>& results) {
     return output.str();
 }
 
-std::string format_markdown_report(const std::vector<SimulationResult>& results) {
+std::string format_markdown_report(const std::vector<EvaluationResult>& results) {
     std::ostringstream output;
     float total_score = 0.0f;
     int stable_count = 0;
@@ -322,7 +328,8 @@ std::string format_markdown_report(const std::vector<SimulationResult>& results)
 
     output << "# Flight Control Closed-Loop Evaluation\n\n";
     output << "- policy: generated static MLP only\n";
-    output << "- loop: SpeedController -> ModelAdapter -> TorqueController -> PWM -> motor lag -> rigid-body plant\n";
+    output << "- loop: SpeedController -> ModelAdapter -> TorqueController -> PWM -> motor lag -> host truth dynamics\n";
+    output << "- sensors: delayed estimated state with gyro bias, drift, jitter, position/velocity bias\n";
     output << "- stable scenarios: " << stable_count << "/" << results.size() << "\n";
     output << "- average score: " << std::fixed << std::setprecision(1) << average_score << "/100\n\n";
     output << "| Scenario | Stable | Score | Velocity RMS | Alt Drift | Max Tilt | PWM Sat | Recovery | Final z |\n";

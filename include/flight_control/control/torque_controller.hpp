@@ -23,6 +23,8 @@ struct TorqueControllerConfig {
     float pwm_min_us{1000.0f};
     /** PWM 最大脉宽，单位 us。 */
     float pwm_max_us{2000.0f};
+    /** 推力曲线指数，大于 1 表示低油门段单位 PWM 产生的推力更弱。 */
+    float thrust_curve_exponent{1.0f};
     /** PWM 变化斜率限制，单位 us/s。 */
     float pwm_slew_rate_us_per_sec{3500.0f};
 };

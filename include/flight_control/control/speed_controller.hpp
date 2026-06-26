@@ -23,6 +23,10 @@ struct SpeedControllerConfig {
     float kp_z{2.75f};
     /** 竖直速度积分增益，用于抵消负载变化或推力偏差。 */
     float ki_z{0.42f};
+    /** 悬停推力自适应增益，用于把持续竖直速度误差转换为 collective trim。 */
+    float hover_thrust_trim_gain{0.0f};
+    /** 悬停推力自适应修正限幅，单位为归一化 collective。 */
+    float hover_thrust_trim_limit{0.06f};
     /** 高度保持比例增益，在爬升率指令接近 0 时把高度误差转为竖直速度修正。 */
     float kp_altitude_hold{2.2f};
     /** 高度保持产生的竖直速度修正上限，单位 m/s。 */
@@ -31,6 +35,10 @@ struct SpeedControllerConfig {
     float max_accel_xy_m_s2{8.0f};
     /** 竖直期望加速度上限，单位 m/s^2。 */
     float max_accel_z_m_s2{5.2f};
+    /** 水平期望加速度变化率上限，单位 m/s^3。 */
+    float max_accel_xy_slew_m_s3{5.8f};
+    /** 竖直期望加速度变化率上限，单位 m/s^3。 */
+    float max_accel_z_slew_m_s3{6.0f};
     /** 最大倾角限制，单位 rad，防止速度外环要求过大姿态。 */
     float max_tilt_rad{0.74f};
     /** 最大爬升率指令限幅，单位 m/s。 */
@@ -92,6 +100,10 @@ private:
     float integral_z_{0.0f};
     /** 内部 yaw 目标，单位 rad。 */
     float yaw_target_{0.0f};
+    /** 上一次输出的目标加速度，用于限制目标姿态变化速度。 */
+    Vector3 last_acceleration_m_s2_{};
+    /** 根据长期竖直误差估计出的悬停推力修正量。 */
+    float hover_thrust_trim_{0.0f};
     /** 高度保持锁定的目标高度，单位 m。 */
     float altitude_hold_target_m_{0.0f};
     /** yaw 目标是否已用当前姿态初始化。 */

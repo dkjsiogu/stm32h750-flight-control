@@ -1,14 +1,15 @@
 # Flight Control Closed-Loop Evaluation
 
 - policy: generated static MLP only
-- loop: SpeedController -> ModelAdapter -> TorqueController -> PWM -> motor lag -> rigid-body plant
+- loop: SpeedController -> ModelAdapter -> TorqueController -> PWM -> motor lag -> host truth dynamics
+- sensors: delayed estimated state with gyro bias, drift, jitter, position/velocity bias
 - stable scenarios: 5/5
-- average score: 83.9/100
+- average score: 75.6/100
 
 | Scenario | Stable | Score | Velocity RMS | Alt Drift | Max Tilt | PWM Sat | Recovery | Final z |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
-| hover_wind_bias | yes | 94.364 | 0.029 | 0.000 | 0.013 | 0.000 | 0.000 | 1.200 |
-| forward_cruise | yes | 88.095 | 0.011 | 0.015 | 0.020 | 0.000 | 0.976 | 1.199 |
-| gust_recovery | yes | 83.336 | 0.142 | 0.000 | 0.057 | 0.000 | 0.000 | 1.200 |
-| payload_motor_lag | yes | 76.969 | 0.062 | 0.379 | 0.007 | 0.000 | 0.000 | 1.089 |
-| climb_turn_cruise | yes | 76.824 | 0.068 | 1.160 | 0.028 | 0.000 | 0.096 | 2.284 |
+| hover_wind_bias | yes | 87.321 | 0.043 | 0.021 | 0.058 | 0.000 | 0.000 | 1.184 |
+| forward_cruise | yes | 82.457 | 0.045 | 0.021 | 0.064 | 0.000 | 0.756 | 1.182 |
+| gust_recovery | yes | 64.634 | 0.189 | 0.021 | 0.107 | 0.000 | 1.448 | 1.180 |
+| payload_motor_lag | yes | 64.043 | 0.125 | 0.355 | 0.140 | 0.000 | 0.000 | 1.083 |
+| climb_turn_cruise | yes | 79.382 | 0.102 | 0.275 | 0.102 | 0.000 | 0.180 | 2.157 |

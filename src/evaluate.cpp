@@ -4,7 +4,7 @@
 #include <memory>
 #include <vector>
 
-#include "flight_control/eval/simulation_runner.hpp"
+#include "flight_control/eval/closed_loop_evaluator.hpp"
 #include "flight_control/model/generated_policy.hpp"
 #include "flight_control/model/static_mlp_policy.hpp"
 
@@ -13,9 +13,9 @@ int main() {
 
     auto policy = std::make_shared<StaticMlpPolicy>(make_generated_policy_weights());
     ModelAdapterConfig model_config = generated_model_config();
-    SimulationRunner runner(policy);
+    ClosedLoopEvaluator runner(policy);
 
-    std::vector<SimulationResult> results;
+    std::vector<EvaluationResult> results;
     for (const EvaluationScenario& scenario : default_evaluation_scenarios(model_config)) {
         results.push_back(runner.run(scenario));
     }

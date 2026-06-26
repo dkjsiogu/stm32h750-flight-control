@@ -12,4 +12,4 @@ SensorSource -> SpeedController -> ModelAdapter/StaticMlpPolicy -> TorqueControl
 
 ## 当前验证方式
 
-host 侧 `SimulatedQuadPlant` 提供带电机一阶滞后、风场、阻力、陀螺仪 bias/jitter 的闭环仿真。`flight_control_eval` 会运行悬停风偏、前向巡航、阵风恢复、重物慢电机、上升转弯巡航五个场景，并输出 `output/flight_evaluation_report.md`。
+host 侧 `HostFlightEnvironment` 作为真实环境替身，包含电机一阶滞后、PWM 非线性推力曲线、电机个体差异、风场/阵风、阻力、电池压降、传感器延迟、陀螺仪 bias/drift/jitter、姿态/速度/位置估计偏差。`flight_control_eval` 会运行悬停风偏、前向巡航、阵风恢复、重物慢电机、上升转弯巡航五个场景，并输出 `output/flight_evaluation_report.md`。

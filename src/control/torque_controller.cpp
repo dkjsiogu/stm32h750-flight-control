@@ -1,6 +1,7 @@
 #include "flight_control/control/torque_controller.hpp"
 
 #include <algorithm>
+#include <cmath>
 
 namespace flight_control {
 
@@ -10,7 +11,10 @@ TorqueController::TorqueController(TorqueControllerConfig config)
 }
 
 void TorqueController::reset() {
-    const float hover_pwm = config_.pwm_min_us + 0.38f * (config_.pwm_max_us - config_.pwm_min_us);
+    const float hover_thrust_ratio = 0.38f;
+    const float curve = std::max(config_.thrust_curve_exponent, 1e-4f);
+    const float hover_pwm_ratio = std::pow(hover_thrust_ratio, 1.0f / curve);
+    const float hover_pwm = config_.pwm_min_us + hover_pwm_ratio * (config_.pwm_max_us - config_.pwm_min_us);
     last_pwm_.pwm_us.fill(hover_pwm);
 }
 
@@ -44,7 +48,9 @@ MotorPwmFrame TorqueController::mix(float collective, const Vector3& body_torque
 
 float TorqueController::thrust_to_pwm(float thrust_n, float dt_sec, std::size_t motor_index) {
     const float normalized = std::clamp(thrust_n / std::max(config_.max_motor_thrust_n, 1e-5f), 0.0f, 1.0f);
-    const float desired_pwm = config_.pwm_min_us + normalized * (config_.pwm_max_us - config_.pwm_min_us);
+    const float curve = std::max(config_.thrust_curve_exponent, 1e-4f);
+    const float pwm_ratio = std::pow(normalized, 1.0f / curve);
+    const float desired_pwm = config_.pwm_min_us + pwm_ratio * (config_.pwm_max_us - config_.pwm_min_us);
     const float max_delta = std::max(dt_sec, 1e-4f) * config_.pwm_slew_rate_us_per_sec;
     const float delta = std::clamp(desired_pwm - last_pwm_.pwm_us[motor_index], -max_delta, max_delta);
     last_pwm_.pwm_us[motor_index] = std::clamp(last_pwm_.pwm_us[motor_index] + delta, config_.pwm_min_us, config_.pwm_max_us);
@@ -52,4 +58,3 @@ float TorqueController::thrust_to_pwm(float thrust_n, float dt_sec, std::size_t 
 }
 
 }  // namespace flight_control
-

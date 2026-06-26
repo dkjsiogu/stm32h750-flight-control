@@ -13,6 +13,8 @@ SpeedController::SpeedController(SpeedControllerConfig config)
 void SpeedController::reset(const Quaternion& current_attitude) {
     integral_xy_ = {};
     integral_z_ = 0.0f;
+    last_acceleration_m_s2_ = {};
+    hover_thrust_trim_ = 0.0f;
     yaw_target_ = to_euler_zyx(current_attitude).z;
     yaw_initialized_ = true;
     altitude_hold_target_m_ = 0.0f;
@@ -56,6 +58,12 @@ AttitudeSetpoint SpeedController::update(const VehicleState& state, const Guidan
     integral_xy_.x = std::clamp(integral_xy_.x + velocity_error.x * dt, -config_.integral_limit_xy, config_.integral_limit_xy);
     integral_xy_.y = std::clamp(integral_xy_.y + velocity_error.y * dt, -config_.integral_limit_xy, config_.integral_limit_xy);
     integral_z_ = std::clamp(integral_z_ + velocity_error.z * dt, -config_.integral_limit_z, config_.integral_limit_z);
+    if (std::fabs(command.climb_rate_m_s) <= 0.02f) {
+        hover_thrust_trim_ = std::clamp(
+            hover_thrust_trim_ + config_.hover_thrust_trim_gain * velocity_error.z * dt,
+            -config_.hover_thrust_trim_limit,
+            config_.hover_thrust_trim_limit);
+    }
 
     Vector3 acceleration_xy{
         config_.kp_xy * velocity_error.x + config_.ki_xy * integral_xy_.x,
@@ -71,15 +79,37 @@ AttitudeSetpoint SpeedController::update(const VehicleState& state, const Guidan
 
     yaw_target_ = wrap_angle(yaw_target_ + yaw_rate * dt);
 
-    const Vector3 acceleration{
+    Vector3 acceleration{
         acceleration_xy.x,
         acceleration_xy.y,
         acceleration_z,
     };
+    const Vector3 accel_delta{
+        acceleration.x - last_acceleration_m_s2_.x,
+        acceleration.y - last_acceleration_m_s2_.y,
+        acceleration.z - last_acceleration_m_s2_.z,
+    };
+    const Vector3 limited_xy_delta = clamp_magnitude(
+        {accel_delta.x, accel_delta.y, 0.0f},
+        config_.max_accel_xy_slew_m_s3 * dt);
+    const float limited_z_delta = std::clamp(
+        accel_delta.z,
+        -config_.max_accel_z_slew_m_s3 * dt,
+        config_.max_accel_z_slew_m_s3 * dt);
+    acceleration = {
+        last_acceleration_m_s2_.x + limited_xy_delta.x,
+        last_acceleration_m_s2_.y + limited_xy_delta.y,
+        last_acceleration_m_s2_.z + limited_z_delta,
+    };
+    last_acceleration_m_s2_ = acceleration;
+
     const Quaternion target_attitude = attitude_from_acceleration(acceleration, yaw_target_);
 
     const Vector3 thrust_vector{acceleration.x, acceleration.y, kGravity + acceleration.z};
-    const float collective = std::clamp(config_.mass_kg * norm(thrust_vector) / config_.max_total_thrust_n, 0.0f, 1.0f);
+    const float collective = std::clamp(
+        config_.mass_kg * norm(thrust_vector) / config_.max_total_thrust_n + hover_thrust_trim_,
+        0.0f,
+        1.0f);
 
     return {
         target_attitude,

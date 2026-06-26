@@ -18,6 +18,11 @@ void TorqueController::reset() {
     last_pwm_.pwm_us.fill(hover_pwm);
 }
 
+MotorPwmFrame TorqueController::failsafe() {
+    last_pwm_.pwm_us.fill(config_.pwm_min_us);
+    return last_pwm_;
+}
+
 MotorPwmFrame TorqueController::mix(float collective, const TorqueCommand& torque, float dt_sec) {
     return mix(collective, torque.body_torque_nm, dt_sec);
 }

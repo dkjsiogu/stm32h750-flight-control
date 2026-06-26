@@ -47,6 +47,12 @@ public:
     /** 复位内部 PWM 记忆。 */
     void reset();
     /**
+     * 立即输出安全 PWM。
+     *
+     * @return 四路电机安全 PWM，通常等于最小脉宽。
+     */
+    MotorPwmFrame failsafe();
+    /**
      * 使用总推力和力矩指令进行混控。
      *
      * @param collective 归一化总推力，范围通常为 0 到 1。

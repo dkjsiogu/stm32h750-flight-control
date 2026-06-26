@@ -67,6 +67,19 @@ void test_torque_controller_roll_mix() {
     check(pwm.pwm_us[3] > pwm.pwm_us[2], "positive roll torque raises rear-left over rear-right");
 }
 
+void test_torque_controller_failsafe_is_immediate() {
+    flight_control::TorqueControllerConfig config{};
+    config.pwm_slew_rate_us_per_sec = 20.0f;
+    flight_control::TorqueController controller(config);
+
+    (void)controller.mix(0.7f, flight_control::TorqueCommand{{0.04f, -0.03f, 0.02f}}, flight_control::kDefaultControlPeriodSec);
+    const auto pwm = controller.failsafe();
+
+    for (const float pwm_us : pwm.pwm_us) {
+        check(std::fabs(pwm_us - config.pwm_min_us) < 1e-5f, "failsafe immediately writes minimum pwm");
+    }
+}
+
 class CapturingPolicy final : public flight_control::IAttitudePolicy {
 public:
     std::array<float, 3> predict(const std::array<float, flight_control::kModelInputDim>& input) override {
@@ -149,6 +162,7 @@ int main() {
     test_history_window();
     test_speed_controller_forward_pitch();
     test_torque_controller_roll_mix();
+    test_torque_controller_failsafe_is_immediate();
     test_model_adapter();
     test_state_estimator_stationary_observation();
     test_state_estimator_rejects_zero_imu();

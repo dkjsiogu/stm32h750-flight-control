@@ -89,6 +89,13 @@ private:
     void control_loop();
     /** 执行器线程循环。 */
     void actuation_loop();
+    /**
+     * 重置控制器并生成 failsafe 控制解。
+     *
+     * @param current_attitude 当前姿态，用于复位速度外环 yaw 目标。
+     * @return 安全控制解，PWM 为最小输出。
+     */
+    ControlSolution make_failsafe_solution(const Quaternion& current_attitude);
 
     /** 注入依赖。 */
     Dependencies deps_;

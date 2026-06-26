@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.5.0] - 2026-06-27
+
+### Added
+
+- **[safety]**: `TorqueController` 新增立即 failsafe PWM 输出，disarm 或状态不健康时不再沿用上一帧控制 PWM。
+- **[tests]**: 新增 failsafe PWM 单元测试，覆盖最小 PWM 立即输出行为。
+
+### Changed
+
+- **[firmware]**: `FlightApplication` 在传感器不健康或指令 disarm 时重置速度外环、力矩控制器和模型历史，并发布 failsafe 控制解。
+- **[model]**: 仅重新搜索 NN 姿态模型权重，速度外环和力矩混控参数保持不变；闭环评估提升到 `84.6/100`，5 个场景全部稳定。
+
 ## [0.4.0] - 2026-06-27
 
 ### Added

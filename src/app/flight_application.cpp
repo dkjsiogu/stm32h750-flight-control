@@ -83,6 +83,19 @@ void FlightApplication::control_loop() {
             continue;
         }
 
+        const GuidanceCommand command = deps_.command_source->read();
+        if (!telemetry_copy.state.healthy || !command.armed) {
+            const ControlSolution failsafe = make_failsafe_solution(telemetry_copy.state.attitude);
+            initialized = false;
+            {
+                CriticalSectionGuard lock(*deps_.critical_section);
+                latest_solution_ = failsafe;
+                has_solution_ = true;
+            }
+            deps_.task_runner->sleep_ms(kControlPeriodMs);
+            continue;
+        }
+
         if (!initialized) {
             speed_controller_.reset(telemetry_copy.state.attitude);
             torque_controller_.reset();
@@ -90,7 +103,6 @@ void FlightApplication::control_loop() {
             initialized = true;
         }
 
-        const GuidanceCommand command = deps_.command_source->read();
         const AttitudeSetpoint attitude = speed_controller_.update(
             telemetry_copy.state,
             command,
@@ -105,6 +117,16 @@ void FlightApplication::control_loop() {
         }
         deps_.task_runner->sleep_ms(kControlPeriodMs);
     }
+}
+
+ControlSolution FlightApplication::make_failsafe_solution(const Quaternion& current_attitude) {
+    speed_controller_.reset(current_attitude);
+    torque_controller_.reset();
+    model_adapter_.reset();
+
+    ControlSolution solution{};
+    solution.motor_pwm = torque_controller_.failsafe();
+    return solution;
 }
 
 void FlightApplication::actuation_loop() {

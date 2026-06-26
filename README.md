@@ -72,7 +72,7 @@ FLIGHT_CONTROL_DIR=../stm32h750-flight-control python3 tools/export_linear_polic
 
 `flight_control_policy_search` 只搜索姿态模型权重等价参数，速度外环和力矩混控参数不参与调参。`export_linear_policy.py` 将最优历史策略精确导出回本仓库的 `StaticMlpPolicy` 36-128-128-3 权重。
 
-当前模型使用分段 ReLU 历史特征表达大扰动下的非线性补偿；搜索得到的 70 维策略参数保存在 `tools/static_policy_params.txt`，导出的固件权重在 `src/model/generated_policy.cpp`。最新闭环验证平均分为 `84.5/100`，五个场景全部稳定。
+当前模型使用分段 ReLU 历史特征表达大扰动下的非线性补偿；搜索得到的 70 维策略参数保存在仿真仓库 `tools/static_policy_params.txt`，导出的固件权重在 `src/model/generated_policy.cpp`。最新闭环验证平均分为 `84.6/100`，五个场景全部稳定。
 
 ## 构建与验证
 

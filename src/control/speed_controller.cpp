@@ -34,20 +34,17 @@ AttitudeSetpoint SpeedController::update(const VehicleState& state, const Guidan
     const float dt = std::max(dt_sec, 1e-4f);
     const float climb_rate = std::clamp(command.climb_rate_m_s, -config_.max_climb_rate_m_s, config_.max_climb_rate_m_s);
     const float yaw_rate = std::clamp(command.yaw_rate_rad_s, -config_.max_yaw_rate_rad_s, config_.max_yaw_rate_rad_s);
-    float vertical_velocity_target = climb_rate;
-    if (std::fabs(climb_rate) > 0.02f) {
-        altitude_hold_initialized_ = false;
-    } else {
-        if (!altitude_hold_initialized_) {
-            altitude_hold_target_m_ = state.position_m.z;
-            altitude_hold_initialized_ = true;
-        }
-        const float altitude_error = altitude_hold_target_m_ - state.position_m.z;
-        vertical_velocity_target += std::clamp(
-            config_.kp_altitude_hold * altitude_error,
-            -config_.max_altitude_correction_m_s,
-            config_.max_altitude_correction_m_s);
+    if (!altitude_hold_initialized_) {
+        altitude_hold_target_m_ = state.position_m.z;
+        altitude_hold_initialized_ = true;
     }
+    altitude_hold_target_m_ += climb_rate * dt;
+    const float altitude_error = altitude_hold_target_m_ - state.position_m.z;
+    const float altitude_correction = std::clamp(
+        config_.kp_altitude_hold * altitude_error,
+        -config_.max_altitude_correction_m_s,
+        config_.max_altitude_correction_m_s);
+    float vertical_velocity_target = climb_rate + altitude_correction;
 
     const Vector3 velocity_error{
         command.target_velocity_m_s.x - state.velocity_m_s.x,

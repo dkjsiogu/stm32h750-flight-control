@@ -12,43 +12,43 @@ namespace flight_control {
  */
 struct SpeedControllerConfig {
     /** 机体质量，单位 kg，用于把期望加速度换算为 collective。 */
-    float mass_kg{1.0f};
+    float mass_kg{1.06298685f};
     /** 最大总推力，单位 N，通常等于四个电机最大推力之和。 */
     float max_total_thrust_n{25.506f};
     /** 水平速度比例增益，用于 x/y 速度误差。 */
-    float kp_xy{2.8f};
+    float kp_xy{3.18691945f};
     /** 水平速度积分增益，用于抵消稳定风场或拖曳造成的速度偏差。 */
-    float ki_xy{0.42f};
+    float ki_xy{0.437083364f};
     /** 竖直速度比例增益，用于爬升率误差。 */
-    float kp_z{2.75f};
+    float kp_z{5.331285f};
     /** 竖直速度积分增益，用于抵消负载变化或推力偏差。 */
-    float ki_z{0.42f};
+    float ki_z{0.0500000007f};
     /** 悬停推力自适应增益，用于把持续竖直速度误差转换为 collective trim。 */
     float hover_thrust_trim_gain{0.0f};
     /** 悬停推力自适应修正限幅，单位为归一化 collective。 */
-    float hover_thrust_trim_limit{0.06f};
-    /** 高度保持比例增益，在爬升率指令接近 0 时把高度误差转为竖直速度修正。 */
-    float kp_altitude_hold{2.2f};
-    /** 高度保持产生的竖直速度修正上限，单位 m/s。 */
-    float max_altitude_correction_m_s{2.0f};
+    float hover_thrust_trim_limit{0.0980889276f};
+    /** 高度目标比例增益，把内部目标高度误差转为竖直速度修正。 */
+    float kp_altitude_hold{4.19119644f};
+    /** 内部高度目标产生的竖直速度修正上限，单位 m/s。 */
+    float max_altitude_correction_m_s{2.38851595f};
     /** 水平期望加速度上限，单位 m/s^2。 */
-    float max_accel_xy_m_s2{8.0f};
+    float max_accel_xy_m_s2{7.8083396f};
     /** 竖直期望加速度上限，单位 m/s^2。 */
-    float max_accel_z_m_s2{5.2f};
+    float max_accel_z_m_s2{5.86347628f};
     /** 水平期望加速度变化率上限，单位 m/s^3。 */
-    float max_accel_xy_slew_m_s3{5.8f};
+    float max_accel_xy_slew_m_s3{6.20005322f};
     /** 竖直期望加速度变化率上限，单位 m/s^3。 */
-    float max_accel_z_slew_m_s3{6.0f};
+    float max_accel_z_slew_m_s3{21.9079819f};
     /** 最大倾角限制，单位 rad，防止速度外环要求过大姿态。 */
-    float max_tilt_rad{0.74f};
+    float max_tilt_rad{0.740161479f};
     /** 最大爬升率指令限幅，单位 m/s。 */
     float max_climb_rate_m_s{4.0f};
     /** 最大 yaw 角速度指令限幅，单位 rad/s。 */
     float max_yaw_rate_rad_s{2.5f};
     /** 水平速度积分项限幅，防止长期风扰下积分饱和。 */
-    float integral_limit_xy{3.6f};
+    float integral_limit_xy{2.0186224f};
     /** 竖直速度积分项限幅，防止负载变化下积分饱和。 */
-    float integral_limit_z{4.5f};
+    float integral_limit_z{7.20086813f};
 };
 
 /**
@@ -104,11 +104,11 @@ private:
     Vector3 last_acceleration_m_s2_{};
     /** 根据长期竖直误差估计出的悬停推力修正量。 */
     float hover_thrust_trim_{0.0f};
-    /** 高度保持锁定的目标高度，单位 m。 */
+    /** 由爬升率指令积分出的内部目标高度，单位 m。 */
     float altitude_hold_target_m_{0.0f};
     /** yaw 目标是否已用当前姿态初始化。 */
     bool yaw_initialized_{false};
-    /** 高度保持目标是否已初始化。 */
+    /** 内部目标高度是否已用当前高度初始化。 */
     bool altitude_hold_initialized_{false};
 };
 

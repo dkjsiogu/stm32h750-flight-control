@@ -2732,8 +2732,8 @@ std::shared_ptr<const StaticMlpPolicyWeights> make_generated_policy_weights() {
 
 ModelAdapterConfig generated_model_config() {
     ModelAdapterConfig config{};
-    config.torque_limit_nm = 0.15f;
-    config.target_reset_threshold = 2.0f;
+    config.torque_limit_nm = 0.204486564f;
+    config.target_reset_threshold = 3.47044468f;
     config.normalization.omega_mean = {0.0f, 0.0f, 0.0f};
     config.normalization.omega_std = {1.0f, 1.0f, 1.0f};
     return config;

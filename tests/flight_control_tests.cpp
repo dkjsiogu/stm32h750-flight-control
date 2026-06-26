@@ -55,6 +55,36 @@ void test_speed_controller_forward_pitch() {
     check(output.collective > 0.25f, "forward command produces nonzero collective");
 }
 
+void test_speed_controller_keeps_integrated_climb_target() {
+    flight_control::SpeedControllerConfig config{};
+    config.kp_z = 1.0f;
+    config.ki_z = 0.0f;
+    config.kp_altitude_hold = 2.0f;
+    config.max_altitude_correction_m_s = 2.0f;
+    config.max_accel_z_m_s2 = 4.0f;
+    config.max_accel_xy_slew_m_s3 = 100.0f;
+    config.max_accel_z_slew_m_s3 = 100.0f;
+    flight_control::SpeedController controller(config);
+
+    flight_control::VehicleState state{};
+    state.attitude = {};
+    state.position_m.z = 1.0f;
+    state.healthy = true;
+
+    flight_control::GuidanceCommand climb{};
+    climb.armed = true;
+    climb.climb_rate_m_s = 1.0f;
+    for (int sample = 0; sample < 10; ++sample) {
+        (void)controller.update(state, climb, 0.1f);
+    }
+
+    flight_control::GuidanceCommand hold{};
+    hold.armed = true;
+    const auto output = controller.update(state, hold, 0.1f);
+    check(output.target_acceleration_m_s2.z > 0.5f,
+          "speed controller keeps integrated climb target after climb command ends");
+}
+
 void test_torque_controller_roll_mix() {
     flight_control::TorqueControllerConfig config{};
     config.pwm_slew_rate_us_per_sec = 1.0e8f;
@@ -161,6 +191,7 @@ void test_generated_policy_is_finite() {
 int main() {
     test_history_window();
     test_speed_controller_forward_pitch();
+    test_speed_controller_keeps_integrated_climb_target();
     test_torque_controller_roll_mix();
     test_torque_controller_failsafe_is_immediate();
     test_model_adapter();

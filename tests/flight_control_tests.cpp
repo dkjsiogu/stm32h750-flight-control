@@ -11,6 +11,8 @@
 #include "flight_control/model/generated_policy.hpp"
 #include "flight_control/model/static_mlp_policy.hpp"
 #include "flight_control/platform/host/host_environment.hpp"
+#include "flight_control/platform/host/host_synchronization.hpp"
+#include "flight_control/platform/host/thread_task_runner.hpp"
 
 namespace {
 
@@ -123,6 +125,7 @@ void test_application_smoke() {
     auto pwm_output = std::make_shared<flight_control::HostPwmOutput>(environment);
     auto policy = std::make_shared<flight_control::HeuristicAttitudePolicy>();
     auto runner = std::make_shared<flight_control::ThreadTaskRunner>();
+    auto critical_section = std::make_shared<flight_control::HostMutexCriticalSection>();
 
     flight_control::FlightApplication app({
         runner,
@@ -130,8 +133,9 @@ void test_application_smoke() {
         commands,
         pwm_output,
         policy,
+        critical_section,
     });
-    app.run_demo(std::chrono::milliseconds(120));
+    app.run_for_ms(120U);
 
     const auto telemetry = app.telemetry();
     const auto solution = app.snapshot();

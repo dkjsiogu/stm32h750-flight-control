@@ -169,7 +169,6 @@ FlightTelemetry HostFlightEnvironment::telemetry() const {
     return {
         raw,
         estimated,
-        truth_,
         current_wind.x * 0.88f,
         current_wind.y * 0.88f,
         config_.sensor_latency_sec * 1000.0f,

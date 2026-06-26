@@ -16,3 +16,10 @@
 - **[control]**: 优化水平/竖直速度外环参数，提高风扰和负载下的闭环恢复能力。
 - **[control]**: 速度外环加入目标加速度斜率限制，力矩控制器加入推力曲线标定。
 - **[model]**: 生成模型 torque scale 从 `0.10Nm` 调整为 `0.15Nm`，在当前评估集里提升巡航和上升转弯响应。
+- **[firmware]**: 将固件核心拆为 `flight_control_firmware_core`，host 环境、闭环评估器、文件输出和 host 线程运行器全部移出固件核心。
+- **[firmware]**: 新增 STM32/FreeRTOS 装配入口和板级 hook 端口，固件侧只接入真实传感器、指令、PWM 和临界区。
+- **[data]**: 从核心 `FlightTelemetry` 移除 host 仿真真值字段，仿真真值只允许由 host 评估环境单独读取。
+
+### Added
+
+- **[tests]**: 新增 `firmware_boundary_tests`，回归检查固件核心 target 不包含 host/eval/demo 源文件，核心头文件不暴露 host runner 或仿真真值。

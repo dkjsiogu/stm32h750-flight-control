@@ -56,16 +56,14 @@ struct VehicleState {
 /**
  * 一帧飞控遥测数据。
  *
- * 同时包含原始传感器包、控制器实际使用的估计状态和主机环境真实状态。
- * 真实状态只用于 host 评估验收，控制器闭环必须继续使用 state 字段。
+ * 只包含真实飞控能获得的原始传感器包、估计状态和链路诊断量。
+ * 仿真真值不得进入这个结构，host 评估需要单独从评估环境读取真值。
  */
 struct FlightTelemetry {
     /** 原始传感器采样数据。 */
     SensorPacket raw{};
     /** 估计后供控制器使用的状态。 */
     VehicleState state{};
-    /** 主机环境内部真实状态，用于评估，不允许控制器直接依赖。 */
-    VehicleState truth{};
     /** 估计风速 x 分量，单位 m/s。 */
     float estimated_wind_x_m_s{0.0f};
     /** 估计风速 y 分量，单位 m/s。 */

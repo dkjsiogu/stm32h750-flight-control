@@ -1,19 +1,13 @@
 #include "flight_control/app/flight_application.hpp"
 
-#include <chrono>
-#include <iomanip>
-#include <iostream>
-#include <stdexcept>
-#include <thread>
 #include <utility>
 
 namespace flight_control {
 
 namespace {
 
-void sleep_control_period() {
-    std::this_thread::sleep_for(std::chrono::milliseconds(4));
-}
+/** 默认控制任务周期，单位 ms。 */
+constexpr std::uint32_t kControlPeriodMs = 4;
 
 }  // namespace
 
@@ -25,18 +19,20 @@ FlightApplication::FlightApplication(Dependencies deps,
       speed_controller_(speed_config),
       torque_controller_(torque_config),
       model_adapter_(deps_.policy, model_config) {
-    if (!deps_.task_runner || !deps_.sensor_source || !deps_.command_source || !deps_.pwm_output) {
-        throw std::invalid_argument("FlightApplication dependencies must not be null");
+    if (!deps_.critical_section) {
+        deps_.critical_section = std::make_shared<NullCriticalSection>();
     }
 }
 
-void FlightApplication::run_demo(std::chrono::milliseconds duration) {
+void FlightApplication::start() {
     deps_.task_runner->spawn("acquisition", [this] { acquisition_loop(); });
     deps_.task_runner->spawn("control", [this] { control_loop(); });
     deps_.task_runner->spawn("actuation", [this] { actuation_loop(); });
-    deps_.task_runner->spawn("log", [this] { log_loop(); });
+}
 
-    std::this_thread::sleep_for(duration);
+void FlightApplication::run_for_ms(std::uint32_t duration_ms) {
+    start();
+    deps_.task_runner->sleep_ms(duration_ms);
     request_stop();
     join();
 }
@@ -50,12 +46,12 @@ void FlightApplication::join() {
 }
 
 ControlSolution FlightApplication::snapshot() const {
-    std::lock_guard<std::mutex> lock(snapshot_mutex_);
+    CriticalSectionGuard lock(*deps_.critical_section);
     return latest_solution_;
 }
 
 FlightTelemetry FlightApplication::telemetry() const {
-    std::lock_guard<std::mutex> lock(snapshot_mutex_);
+    CriticalSectionGuard lock(*deps_.critical_section);
     return latest_telemetry_;
 }
 
@@ -63,11 +59,11 @@ void FlightApplication::acquisition_loop() {
     while (!deps_.task_runner->stop_requested()) {
         const FlightTelemetry telemetry = deps_.sensor_source->read();
         {
-            std::lock_guard<std::mutex> lock(snapshot_mutex_);
+            CriticalSectionGuard lock(*deps_.critical_section);
             latest_telemetry_ = telemetry;
             has_telemetry_ = true;
         }
-        sleep_control_period();
+        deps_.task_runner->sleep_ms(kControlPeriodMs);
     }
 }
 
@@ -77,13 +73,13 @@ void FlightApplication::control_loop() {
         FlightTelemetry telemetry_copy{};
         bool telemetry_ready = false;
         {
-            std::lock_guard<std::mutex> lock(snapshot_mutex_);
+            CriticalSectionGuard lock(*deps_.critical_section);
             telemetry_copy = latest_telemetry_;
             telemetry_ready = has_telemetry_;
         }
 
         if (!telemetry_ready) {
-            sleep_control_period();
+            deps_.task_runner->sleep_ms(kControlPeriodMs);
             continue;
         }
 
@@ -103,11 +99,11 @@ void FlightApplication::control_loop() {
         const MotorPwmFrame pwm = torque_controller_.mix(attitude.collective, torque, kDefaultControlPeriodSec);
 
         {
-            std::lock_guard<std::mutex> lock(snapshot_mutex_);
+            CriticalSectionGuard lock(*deps_.critical_section);
             latest_solution_ = {attitude, torque, pwm};
             has_solution_ = true;
         }
-        sleep_control_period();
+        deps_.task_runner->sleep_ms(kControlPeriodMs);
     }
 }
 
@@ -116,7 +112,7 @@ void FlightApplication::actuation_loop() {
         ControlSolution solution{};
         bool solution_ready = false;
         {
-            std::lock_guard<std::mutex> lock(snapshot_mutex_);
+            CriticalSectionGuard lock(*deps_.critical_section);
             solution = latest_solution_;
             solution_ready = has_solution_;
         }
@@ -124,30 +120,8 @@ void FlightApplication::actuation_loop() {
         if (solution_ready) {
             deps_.pwm_output->write(solution.motor_pwm);
         }
-        sleep_control_period();
-    }
-}
-
-void FlightApplication::log_loop() {
-    while (!deps_.task_runner->stop_requested()) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(500));
-        FlightTelemetry telemetry_copy{};
-        ControlSolution solution_copy{};
-        {
-            std::lock_guard<std::mutex> lock(snapshot_mutex_);
-            telemetry_copy = latest_telemetry_;
-            solution_copy = latest_solution_;
-        }
-
-        const auto& state = telemetry_copy.state;
-        std::cout << std::fixed << std::setprecision(3)
-                  << "t=" << state.timestamp_sec
-                  << " pos=(" << state.position_m.x << "," << state.position_m.y << "," << state.position_m.z << ")"
-                  << " vel=(" << state.velocity_m_s.x << "," << state.velocity_m_s.y << "," << state.velocity_m_s.z << ")"
-                  << " pwm0=" << solution_copy.motor_pwm.pwm_us[0]
-                  << '\n';
+        deps_.task_runner->sleep_ms(kControlPeriodMs);
     }
 }
 
 }  // namespace flight_control
-

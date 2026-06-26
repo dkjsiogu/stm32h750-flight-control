@@ -1,5 +1,6 @@
-#include "flight_control/runtime/task_runner.hpp"
+#include "flight_control/platform/host/thread_task_runner.hpp"
 
+#include <chrono>
 #include <exception>
 #include <iostream>
 #include <utility>
@@ -33,6 +34,10 @@ bool ThreadTaskRunner::stop_requested() const {
     return stop_requested_.load();
 }
 
+void ThreadTaskRunner::sleep_ms(std::uint32_t duration_ms) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(duration_ms));
+}
+
 void ThreadTaskRunner::join() {
     for (auto& thread : threads_) {
         if (thread.joinable()) {
@@ -43,4 +48,3 @@ void ThreadTaskRunner::join() {
 }
 
 }  // namespace flight_control
-

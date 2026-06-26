@@ -4,7 +4,7 @@
 
 - `flight_control_firmware_core`: 真实飞控核心 target，只编译控制器、模型、数据结构、应用调度抽象和同步抽象。
 - `flight_control_stm32_port`: STM32/FreeRTOS 适配层，通过板级 hook 读取真实传感器/指令并写入 PWM。
-- `boards/stm32h743`: H743 板级可烧录骨架，真实外设驱动通过 `board_io.hpp` 接入。
+- `boards/stm32h743`: H743 板级可烧录骨架，真实外设驱动通过 `drivers/real` 和 `board_io.hpp` 接入；`H743_DRIVER_MODE=real` 会强制要求真实驱动，并默认自动获取 FreeRTOS Kernel。
 - `../stm32h750-flight-sim`: 独立 PC 侧仿真仓库，提供飞机动力学、风场、载荷、电机/电调链路、传感器模型和闭环评估；不属于飞控固件仓库。
 
 ## 控制层
@@ -18,6 +18,7 @@
 - `src/main.cpp`: STM32 固件装配入口，注入 `FreertosTaskRunner`、`Stm32SensorSource`、`Stm32CommandSource`、`Stm32PwmOutput`、`Stm32CriticalSection` 和生成的静态 MLP。
 - `Stm32SensorSource`: 通过 `flight_control_board_read_sensors` 读取真实原始传感器和可选外部观测，由 `StateEstimator` 生成控制状态，核心 `FlightTelemetry` 不包含仿真真值。
 - `Stm32PwmOutput`: 通过 `flight_control_board_write_pwm` 写真实电调/电机 PWM。
+- `boards/stm32h743/include/board_io.hpp`: 真实底层驱动契约，覆盖系统早期初始化、驱动初始化、failsafe 输出、IMU、外部观测、指令输入、PWM 输出、风估计、链路延迟和临界区。
 
 ## 独立仿真层
 

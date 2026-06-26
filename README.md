@@ -4,7 +4,7 @@
 
 - `flight_control_firmware_core`: 可烧录飞控核心，不编译 PC 侧仿真、评估器、文件输出或 `std::thread` runner。
 - `flight_control_stm32_port`: STM32/FreeRTOS 端口，负责接入真实传感器、速度指令、PWM 输出和临界区。
-- `boards/stm32h743`: STM32H743 最小可烧录工程骨架，包含 ARM toolchain、启动文件、linker script 和板级 hook 接入点。
+- `boards/stm32h743`: STM32H743 可烧录工程骨架，包含 ARM toolchain、启动文件、linker script、FreeRTOS 配置、newlib 桩和 drivers/BSP 接入点。
 
 仿真、飞机动力学、风场、传感器延迟和训练评估已经剥离到独立仓库 `../stm32h750-flight-sim`。
 
@@ -21,25 +21,30 @@
 
 固件核心的遥测结构只包含真实飞控能获得的原始传感器、估计状态和链路诊断量；仿真真值只存在于独立仿真工程。
 
-## STM32 板级 hook
+## H743 drivers/BSP 缺口
 
-移植到 STM32 工程时需要在板级代码中实现这些 C hook：
+H743 工程现在有两个明确模式：
+
+- `H743_DRIVER_MODE=stub`: 默认链接验证模式，只证明上层飞控、启动文件、linker script 和镜像生成能通过；驱动固定返回无效数据和 disarm。
+- `H743_DRIVER_MODE=real`: 真实烧录模式，必须补齐 `boards/stm32h743/drivers/real/` 下的真实驱动源文件；FreeRTOS Kernel 默认由 CMake 自动获取，也可以指定本地路径。
+
+真实驱动只需要实现 `boards/stm32h743/include/board_io.hpp` 里的底层函数：
 
 ```cpp
-void flight_control_board_read_sensors(
-    flight_control::SensorPacket* packet,
-    flight_control::StateEstimatorObservation* observation,
-    float* estimated_wind_x_m_s,
-    float* estimated_wind_y_m_s,
-    float* control_latency_ms);
-
-void flight_control_board_read_command(flight_control::GuidanceCommand* command);
-void flight_control_board_write_pwm(const flight_control::MotorPwmFrame* frame);
-void flight_control_board_enter_critical();
-void flight_control_board_exit_critical();
+void board_system_preinit();
+bool board_drivers_initialize();
+void board_write_failsafe_outputs();
+bool board_read_imu_sample(flight_control::SensorPacket* packet);
+bool board_read_external_observation(flight_control::StateEstimatorObservation* observation);
+bool board_read_guidance_command(flight_control::GuidanceCommand* command);
+void board_write_motor_pwm(const flight_control::MotorPwmFrame* frame);
+void board_read_estimated_wind(float* wind_x_m_s, float* wind_y_m_s);
+float board_control_latency_ms();
+void board_enter_critical();
+void board_exit_critical();
 ```
 
-`boards/stm32h743/include/board_io.hpp` 还提供了更低层的 `board_read_imu_sample`、`board_read_external_observation`、`board_read_guidance_command` 和 `board_write_motor_pwm`，真实外设驱动实现这些函数即可接入。
+补齐这些 drivers/BSP 后，飞控入口会先调用板级初始化，再启动采集、控制和执行器任务；生成的 `.hex/.bin` 就是实际烧录产物。
 
 ## 独立仿真
 
@@ -86,16 +91,23 @@ cmake -S . -B build-firmware-entry \
 cmake --build build-firmware-entry
 ```
 
-接入真实 FreeRTOS 头文件时再显式打开：
+H743 链接验证模式：
 
 ```bash
 cmake -S boards/stm32h743 -B build-h743 \
-  -DCMAKE_TOOLCHAIN_FILE=boards/stm32h743/toolchain-arm-none-eabi.cmake \
-  -DH743_USE_FREERTOS=ON \
-  -DH743_FREERTOS_INCLUDE_DIRS="path/to/FreeRTOS/include;path/to/portable"
+  -DCMAKE_TOOLCHAIN_FILE=boards/stm32h743/toolchain-arm-none-eabi.cmake
 cmake --build build-h743
 ```
 
-不接入 FreeRTOS 头文件时，`boards/stm32h743` 默认只做 ARM 交叉编译、linker script 和 hex/bin 生成验证；真实飞行必须打开 `H743_USE_FREERTOS` 并接入板级外设驱动。
+H743 真实烧录模式：
+
+```bash
+cmake -S boards/stm32h743 -B build-h743-real \
+  -DCMAKE_TOOLCHAIN_FILE=boards/stm32h743/toolchain-arm-none-eabi.cmake \
+  -DH743_DRIVER_MODE=real
+cmake --build build-h743-real
+```
+
+如果真实驱动不放在 `drivers/real/`，用 `H743_DRIVER_SOURCES` 和 `H743_DRIVER_INCLUDE_DIRS` 传入。真实模式会自动启用 FreeRTOS，并自动加入常规 FreeRTOS Kernel 源文件、Cortex-M7 GCC port 和 `heap_4.c`。离线构建时设置 `H743_FREERTOS_KERNEL_DIR` 指向本地 FreeRTOS-Kernel，或关闭 `H743_FETCH_FREERTOS` 后手动传 `H743_FREERTOS_SOURCES`。
 
 `firmware_boundary_tests` 会回归检查固件核心 target 不包含旧 PC/eval/demo 源文件，避免仿真代码再次混入飞控核心。

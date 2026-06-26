@@ -74,12 +74,28 @@ void test_simulation_sources_are_not_in_firmware_repository() {
     }
 }
 
+void test_h743_real_driver_mode_is_explicit() {
+    const std::string cmake = read_file("boards/stm32h743/CMakeLists.txt");
+    const std::string board_api = read_file("boards/stm32h743/include/board_io.hpp");
+
+    check(contains(cmake, "H743_DRIVER_MODE"), "H743 board must expose explicit driver mode");
+    check(contains(cmake, "drivers/real"), "H743 real mode must load real driver directory");
+    check(contains(cmake, "drivers/stub"), "H743 stub mode must be isolated from real drivers");
+    check(contains(cmake, "H743_FETCH_FREERTOS"), "H743 real mode must be able to fetch FreeRTOS automatically");
+    check(contains(cmake, "H743_FREERTOS_KERNEL_DIR"), "H743 real mode must support FreeRTOS kernel source wiring");
+    check(contains(cmake, "真实 H743 驱动模式需要"), "H743 real mode must fail when drivers are missing");
+    check(contains(board_api, "board_system_preinit"), "H743 board API must expose system preinit hook");
+    check(contains(board_api, "board_drivers_initialize"), "H743 board API must expose driver init hook");
+    check(contains(board_api, "board_write_failsafe_outputs"), "H743 board API must expose failsafe output hook");
+}
+
 }  // namespace
 
 int main() {
     test_firmware_core_target_is_host_free();
     test_core_headers_do_not_expose_host_or_truth();
     test_simulation_sources_are_not_in_firmware_repository();
+    test_h743_real_driver_mode_is_explicit();
     std::cout << "firmware_boundary_tests passed\n";
     return 0;
 }

@@ -21,11 +21,11 @@ g_pfnVectors:
     .word 0
     .word 0
     .word 0
-    .word Default_Handler
+    .word SVC_Handler
     .word Default_Handler
     .word 0
-    .word Default_Handler
-    .word Default_Handler
+    .word PendSV_Handler
+    .word SysTick_Handler
 
 .section .text.Reset_Handler, "ax", %progbits
 .type Reset_Handler, %function

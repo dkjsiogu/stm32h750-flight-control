@@ -6,6 +6,30 @@
 extern "C" {
 
 /**
+ * 板级早期系统初始化。
+ *
+ * 在 `SystemInit` 中调用，真实驱动应在这里配置 HSE/PLL、Flash latency、
+ * Cache、MPU 和中断优先级分组。此函数早于 `main`，不要依赖动态分配。
+ */
+void board_system_preinit();
+
+/**
+ * 初始化全部真实板级驱动。
+ *
+ * 真实实现应完成 GPIO、SPI/I2C/UART、DMA、TIM、ADC、IMU、接收机和电机输出初始化。
+ *
+ * @return true 表示必需驱动已经就绪，可以启动飞控任务。
+ */
+bool board_drivers_initialize();
+
+/**
+ * 写入安全电机输出。
+ *
+ * 真实实现应立即输出锁定/最小油门状态，用于启动前和异常时保护电机链路。
+ */
+void board_write_failsafe_outputs();
+
+/**
  * 读取真实 IMU 和电池数据。
  *
  * @param packet 输出原始传感器数据包。

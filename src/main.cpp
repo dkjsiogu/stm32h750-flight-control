@@ -14,6 +14,8 @@
 int main() {
     using namespace flight_control;
 
+    flight_control_board_initialize();
+
     auto runner = std::make_shared<FreertosTaskRunner>();
     auto sensors = std::make_shared<Stm32SensorSource>();
     auto commands = std::make_shared<Stm32CommandSource>();

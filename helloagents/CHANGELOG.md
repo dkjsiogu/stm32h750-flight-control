@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.4.0] - 2026-06-27
+
+### Added
+
+- **[boards]**: H743 工程新增 `H743_DRIVER_MODE=stub|real`，真实模式必须提供 `drivers/real` 或 `H743_DRIVER_SOURCES`，并可自动获取 FreeRTOS-Kernel。
+- **[boards]**: 新增 `FreeRTOSConfig.h`、Cortex-M7 SVC/PendSV/SysTick 映射和 `SystemCoreClock`，减少真实上板前的工程胶水缺口。
+- **[drivers]**: 新增 `drivers/stub` 链接验证驱动和 `drivers/real` 真实驱动目录契约。
+- **[tests]**: `firmware_boundary_tests` 新增 H743 真实驱动模式约束检查。
+
+### Changed
+
+- **[firmware]**: 固件入口启动任务前调用 `flight_control_board_initialize`，H743 hook 在驱动初始化失败时保持 failsafe/disarm。
+- **[docs]**: README 和知识库改为明确说明：上层飞控已完整，真实烧录只剩 drivers/BSP 和 FreeRTOS Kernel 需要补齐。
+
 ## [0.3.0] - 2026-06-26
 
 ### Added

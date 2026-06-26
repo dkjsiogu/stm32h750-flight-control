@@ -17,6 +17,9 @@ namespace {
 
 extern "C" {
 
+/** 默认板级初始化 hook，不接真实板级工程时不执行任何操作。 */
+void FLIGHT_CONTROL_WEAK flight_control_board_initialize() {}
+
 void FLIGHT_CONTROL_WEAK flight_control_board_read_sensors(
     flight_control::SensorPacket* packet,
     flight_control::StateEstimatorObservation* observation,

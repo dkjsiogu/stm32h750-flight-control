@@ -74,6 +74,13 @@ public:
 extern "C" {
 
 /**
+ * 板级初始化 hook。
+ *
+ * 在飞控应用创建任务前调用，用于初始化真实外设、接收机和电机输出。
+ */
+void flight_control_board_initialize();
+
+/**
  * 板级原始传感器读取 hook。
  *
  * @param packet 输出原始 IMU、电池和可选低层观测数据。

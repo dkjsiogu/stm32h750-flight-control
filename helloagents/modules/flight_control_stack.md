@@ -26,6 +26,7 @@
 
 - `../stm32h750-flight-sim/flight_control_eval`: 生成 CSV 指标和 Markdown 报告。
 - `../stm32h750-flight-sim/flight_control_policy_search`: 搜索姿态模型权重等价参数；当前搜索 363 维 TCN/RMA 参数，并加入鲁棒 INDI teacher 蒸馏项、学习式 RMA encoder 和四层 dilated residual TCN 分支。
+- `../stm32h750-flight-sim/tools/static_torque_backprop_train.py`: 用静态姿态反解 teacher 和 PyTorch/Adam 直接反向传播训练 363 维候选权重；候选只作为快速初始化/筛选来源，正式权重仍必须通过独立闭环验证。
 - `../stm32h750-flight-sim/flight_control_control_param_search`: 搜索速度外环 PID 增益（含微分项）、模型力矩缩放和 PWM 混控参数，训练 seed、开发 seed 和最终验证 seed 分离；当前固定闭环评估为 5/5 稳定、平均分 `90.667/100`，随机验证 seed `20260629` 为 5/5 稳定、平均分 `88.066/100`。
 - `../stm32h750-flight-sim/tools/export_linear_policy.py`: 将搜索得到的 TCN/RMA 参数导出成 `AdaptiveTcnPolicy` 的静态参数，并写回飞控仓库 `src/model/generated_policy.cpp`。
 - `../stm32h750-flight-sim/flight_control_system_tests`: 把五个评估场景作为 CTest 回归门槛。

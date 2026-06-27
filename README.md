@@ -151,4 +151,4 @@ cmake --build build
 ./build/flight_control_eval
 ```
 
-仿真仓库负责飞机动力学、风场、载荷、电机滞后、传感器延迟、模型搜索和闭环评估。训练完成后，它通过导出脚本更新本仓库的 `src/model/generated_policy.cpp`。
+仿真仓库负责飞机动力学、风场、载荷、电机滞后、传感器延迟、模型搜索、静态姿态反解反向传播候选训练和闭环评估。训练完成后，它通过导出脚本更新本仓库的 `src/model/generated_policy.cpp`；正式采用仍以独立闭环验证为准。

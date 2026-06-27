@@ -26,7 +26,7 @@
 
 - `../stm32h750-flight-sim/flight_control_eval`: 生成 CSV 指标和 Markdown 报告。
 - `../stm32h750-flight-sim/flight_control_policy_search`: 搜索姿态模型权重等价参数；当前搜索 363 维 TCN/RMA 参数，并加入鲁棒 INDI teacher 蒸馏项、学习式 RMA encoder 和四层 dilated residual TCN 分支。
-- `../stm32h750-flight-sim/flight_control_control_param_search`: 搜索速度外环、模型力矩缩放和 PWM 混控参数，训练 seed、开发 seed 和最终验证 seed 分离；当前固定闭环评估为 5/5 稳定、平均分 `90.209/100`，随机验证 seed `20260629` 为 5/5 稳定、平均分 `87.679/100`。
+- `../stm32h750-flight-sim/flight_control_control_param_search`: 搜索速度外环 PID 增益（含微分项）、模型力矩缩放和 PWM 混控参数，训练 seed、开发 seed 和最终验证 seed 分离；当前固定闭环评估为 5/5 稳定、平均分 `90.667/100`，随机验证 seed `20260629` 为 5/5 稳定、平均分 `88.066/100`。
 - `../stm32h750-flight-sim/tools/export_linear_policy.py`: 将搜索得到的 TCN/RMA 参数导出成 `AdaptiveTcnPolicy` 的静态参数，并写回飞控仓库 `src/model/generated_policy.cpp`。
 - `../stm32h750-flight-sim/flight_control_system_tests`: 把五个评估场景作为 CTest 回归门槛。
 - `firmware_boundary_tests`: 在飞控仓库内检查固件核心 target、旧 host/eval 目录和核心头文件，确保仿真环境不回流到真机固件工程。

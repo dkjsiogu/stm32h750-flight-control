@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.8.0] - 2026-06-28
+
+### Added
+
+- **[control]**: `SpeedController` 新增水平/竖直速度微分增益 `kd_xy`/`kd_z`，使用基于测量的低通滤波微分（derivative-on-measurement），对突发风扰提供即时加速度修正，在指令跳变时不会产生微分尖峰。
+- **[training]**: `flight_control_control_param_search` 参数扩展到 22 维，新增 `kd_xy`/`kd_z` 搜索；`flight_control_policy_search` 扩展训练/开发评估到 25 个随机化场景（5 个 seed），增强 INDI teacher 的误差积分、二阶微分项和阶跃风扰样本。
+
+### Changed
+
+- **[evaluation]**: 固定五场景保持 `5/5` 稳定，平均分提升到 `90.667/100`；gust_recovery 从 `81.922` 提升到 `83.316`；随机验证 seed `20260629` 保持 `5/5` 稳定，平均分提升到 `88.066/100`，gust_recovery 验证分从 `80.807` 提升到 `82.975`。
+- **[firmware]**: 速度外环 PID 增益由 `control_param_search` 全量重调（`kp_xy` 4.11、`max_accel_xy` 10.5、`kd_z` 1.01 等）；H743 stub 构建通过，`.text` 为 `80,744 bytes`。
+
 ## [0.7.0] - 2026-06-28
 
 ### Added

@@ -12,43 +12,47 @@ namespace flight_control {
  */
 struct SpeedControllerConfig {
     /** 机体质量，单位 kg，用于把期望加速度换算为 collective。 */
-    float mass_kg{1.05335f};
+    float mass_kg{1.06864f};
     /** 最大总推力，单位 N，通常等于四个电机最大推力之和。 */
     float max_total_thrust_n{25.506f};
     /** 水平速度比例增益，用于 x/y 速度误差。 */
-    float kp_xy{3.67776f};
+    float kp_xy{4.11157f};
     /** 水平速度积分增益，用于抵消稳定风场或拖曳造成的速度偏差。 */
-    float ki_xy{0.716009f};
+    float ki_xy{0.629856f};
+    /** 水平速度微分增益，用于对突发风扰提供即时加速度修正。 */
+    float kd_xy{0.100269f};
     /** 竖直速度比例增益，用于爬升率误差。 */
-    float kp_z{6.35384f};
+    float kp_z{6.45573f};
     /** 竖直速度积分增益，用于抵消负载变化或推力偏差。 */
-    float ki_z{0.448203f};
+    float ki_z{0.236261f};
+    /** 竖直速度微分增益，用于对垂直扰动提供即时加速度修正。 */
+    float kd_z{1.01408f};
     /** 悬停推力自适应增益，用于把持续竖直速度误差转换为 collective trim。 */
-    float hover_thrust_trim_gain{0.154535f};
+    float hover_thrust_trim_gain{0.112542f};
     /** 悬停推力自适应修正限幅，单位为归一化 collective。 */
-    float hover_thrust_trim_limit{0.0395621f};
+    float hover_thrust_trim_limit{0.0660627f};
     /** 高度目标比例增益，把内部目标高度误差转为竖直速度修正。 */
-    float kp_altitude_hold{2.64706f};
+    float kp_altitude_hold{4.71835f};
     /** 内部高度目标产生的竖直速度修正上限，单位 m/s。 */
-    float max_altitude_correction_m_s{3.182f};
+    float max_altitude_correction_m_s{2.56931f};
     /** 水平期望加速度上限，单位 m/s^2。 */
-    float max_accel_xy_m_s2{6.43187f};
+    float max_accel_xy_m_s2{10.5073f};
     /** 竖直期望加速度上限，单位 m/s^2。 */
-    float max_accel_z_m_s2{7.97745f};
+    float max_accel_z_m_s2{6.66997f};
     /** 水平期望加速度变化率上限，单位 m/s^3。 */
-    float max_accel_xy_slew_m_s3{7.27261f};
+    float max_accel_xy_slew_m_s3{7.99158f};
     /** 竖直期望加速度变化率上限，单位 m/s^3。 */
-    float max_accel_z_slew_m_s3{36.8036f};
+    float max_accel_z_slew_m_s3{34.5719f};
     /** 最大倾角限制，单位 rad，防止速度外环要求过大姿态。 */
-    float max_tilt_rad{0.622341f};
+    float max_tilt_rad{0.454736f};
     /** 最大爬升率指令限幅，单位 m/s。 */
     float max_climb_rate_m_s{4.0f};
     /** 最大 yaw 角速度指令限幅，单位 rad/s。 */
     float max_yaw_rate_rad_s{2.5f};
     /** 水平速度积分项限幅，防止长期风扰下积分饱和。 */
-    float integral_limit_xy{1.54918f};
+    float integral_limit_xy{1.49477f};
     /** 竖直速度积分项限幅，防止负载变化下积分饱和。 */
-    float integral_limit_z{6.62849f};
+    float integral_limit_z{5.95575f};
 };
 
 /**
@@ -102,6 +106,10 @@ private:
     float yaw_target_{0.0f};
     /** 上一次输出的目标加速度，用于限制目标姿态变化速度。 */
     Vector3 last_acceleration_m_s2_{};
+    /** 上一次测量速度，用于计算微分项（基于测量而非误差）。 */
+    Vector3 last_velocity_m_s_{};
+    /** 低通滤波后的速度变化率，用于抑制微分噪声放大。 */
+    Vector3 velocity_rate_filtered_{};
     /** 根据长期竖直误差估计出的悬停推力修正量。 */
     float hover_thrust_trim_{0.0f};
     /** 由爬升率指令积分出的内部目标高度，单位 m。 */

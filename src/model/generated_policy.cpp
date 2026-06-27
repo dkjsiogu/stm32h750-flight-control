@@ -67,8 +67,8 @@ std::shared_ptr<IAttitudePolicy> make_generated_policy() {
 
 ModelAdapterConfig generated_model_config() {
     ModelAdapterConfig config{};
-    config.torque_limit_nm = 0.279206187f;
-    config.target_reset_threshold = 0.55f;
+    config.torque_limit_nm = 0.28f;
+    config.target_reset_threshold = 0.401333f;
     config.normalization.attitude_error_mean = {0.0f, 0.0f, 0.0f};
     config.normalization.attitude_error_std = {0.5f, 0.5f, 0.45f};
     config.normalization.omega_mean = {0.0f, 0.0f, 0.0f};

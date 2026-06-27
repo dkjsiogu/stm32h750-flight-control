@@ -11,9 +11,12 @@ SpeedController::SpeedController(SpeedControllerConfig config)
     : config_(config) {}
 
 void SpeedController::reset(const Quaternion& current_attitude) {
-    integral_xy_ = {};
+    integral_xy_.x = {};
+    integral_xy_.y = {};
     integral_z_ = 0.0f;
     last_acceleration_m_s2_ = {};
+    last_velocity_m_s_ = {};
+    velocity_rate_filtered_ = {};
     hover_thrust_trim_ = 0.0f;
     yaw_target_ = to_euler_zyx(current_attitude).z;
     yaw_initialized_ = true;
@@ -52,6 +55,21 @@ AttitudeSetpoint SpeedController::update(const VehicleState& state, const Guidan
         vertical_velocity_target - state.velocity_m_s.z,
     };
 
+    const Vector3 velocity_rate_raw{
+        (state.velocity_m_s.x - last_velocity_m_s_.x) / dt,
+        (state.velocity_m_s.y - last_velocity_m_s_.y) / dt,
+        (state.velocity_m_s.z - last_velocity_m_s_.z) / dt,
+    };
+    last_velocity_m_s_ = state.velocity_m_s;
+    constexpr float k_derivative_tau_sec = 0.04f;
+    const float alpha = dt / (dt + k_derivative_tau_sec);
+    velocity_rate_filtered_ = {
+        velocity_rate_filtered_.x + alpha * (velocity_rate_raw.x - velocity_rate_filtered_.x),
+        velocity_rate_filtered_.y + alpha * (velocity_rate_raw.y - velocity_rate_filtered_.y),
+        velocity_rate_filtered_.z + alpha * (velocity_rate_raw.z - velocity_rate_filtered_.z),
+    };
+    const Vector3& velocity_rate = velocity_rate_filtered_;
+
     integral_xy_.x = std::clamp(integral_xy_.x + velocity_error.x * dt, -config_.integral_limit_xy, config_.integral_limit_xy);
     integral_xy_.y = std::clamp(integral_xy_.y + velocity_error.y * dt, -config_.integral_limit_xy, config_.integral_limit_xy);
     integral_z_ = std::clamp(integral_z_ + velocity_error.z * dt, -config_.integral_limit_z, config_.integral_limit_z);
@@ -63,14 +81,14 @@ AttitudeSetpoint SpeedController::update(const VehicleState& state, const Guidan
     }
 
     Vector3 acceleration_xy{
-        config_.kp_xy * velocity_error.x + config_.ki_xy * integral_xy_.x,
-        config_.kp_xy * velocity_error.y + config_.ki_xy * integral_xy_.y,
+        config_.kp_xy * velocity_error.x + config_.ki_xy * integral_xy_.x - config_.kd_xy * velocity_rate.x,
+        config_.kp_xy * velocity_error.y + config_.ki_xy * integral_xy_.y - config_.kd_xy * velocity_rate.y,
         0.0f,
     };
     acceleration_xy = clamp_magnitude(acceleration_xy, config_.max_accel_xy_m_s2);
 
     const float acceleration_z = std::clamp(
-        config_.kp_z * velocity_error.z + config_.ki_z * integral_z_,
+        config_.kp_z * velocity_error.z + config_.ki_z * integral_z_ - config_.kd_z * velocity_rate.z,
         -config_.max_accel_z_m_s2,
         config_.max_accel_z_m_s2);
 

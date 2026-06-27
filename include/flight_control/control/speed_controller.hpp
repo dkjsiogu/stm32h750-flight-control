@@ -12,43 +12,43 @@ namespace flight_control {
  */
 struct SpeedControllerConfig {
     /** 机体质量，单位 kg，用于把期望加速度换算为 collective。 */
-    float mass_kg{1.07508683f};
+    float mass_kg{1.07319f};
     /** 最大总推力，单位 N，通常等于四个电机最大推力之和。 */
     float max_total_thrust_n{25.506f};
     /** 水平速度比例增益，用于 x/y 速度误差。 */
-    float kp_xy{3.48941946f};
+    float kp_xy{3.57144f};
     /** 水平速度积分增益，用于抵消稳定风场或拖曳造成的速度偏差。 */
-    float ki_xy{0.349083364f};
+    float ki_xy{0.10858f};
     /** 竖直速度比例增益，用于爬升率误差。 */
-    float kp_z{6.71798515f};
+    float kp_z{6.8f};
     /** 竖直速度积分增益，用于抵消负载变化或推力偏差。 */
-    float ki_z{0.1435f};
+    float ki_z{0.0757966f};
     /** 悬停推力自适应增益，用于把持续竖直速度误差转换为 collective trim。 */
     float hover_thrust_trim_gain{0.0f};
     /** 悬停推力自适应修正限幅，单位为归一化 collective。 */
-    float hover_thrust_trim_limit{0.0980889276f};
+    float hover_thrust_trim_limit{0.0998339f};
     /** 高度目标比例增益，把内部目标高度误差转为竖直速度修正。 */
-    float kp_altitude_hold{3.83119631f};
+    float kp_altitude_hold{4.16566f};
     /** 内部高度目标产生的竖直速度修正上限，单位 m/s。 */
-    float max_altitude_correction_m_s{2.38851595f};
+    float max_altitude_correction_m_s{2.30372f};
     /** 水平期望加速度上限，单位 m/s^2。 */
-    float max_accel_xy_m_s2{7.8083396f};
+    float max_accel_xy_m_s2{7.47119f};
     /** 竖直期望加速度上限，单位 m/s^2。 */
-    float max_accel_z_m_s2{5.86347628f};
+    float max_accel_z_m_s2{6.473f};
     /** 水平期望加速度变化率上限，单位 m/s^3。 */
-    float max_accel_xy_slew_m_s3{7.08005333f};
+    float max_accel_xy_slew_m_s3{7.18746f};
     /** 竖直期望加速度变化率上限，单位 m/s^3。 */
-    float max_accel_z_slew_m_s3{26.5897789f};
+    float max_accel_z_slew_m_s3{30.5101f};
     /** 最大倾角限制，单位 rad，防止速度外环要求过大姿态。 */
-    float max_tilt_rad{0.740161479f};
+    float max_tilt_rad{0.773308f};
     /** 最大爬升率指令限幅，单位 m/s。 */
     float max_climb_rate_m_s{4.0f};
     /** 最大 yaw 角速度指令限幅，单位 rad/s。 */
     float max_yaw_rate_rad_s{2.5f};
     /** 水平速度积分项限幅，防止长期风扰下积分饱和。 */
-    float integral_limit_xy{2.0186224f};
+    float integral_limit_xy{1.92342f};
     /** 竖直速度积分项限幅，防止负载变化下积分饱和。 */
-    float integral_limit_z{7.20086813f};
+    float integral_limit_z{7.12757f};
 };
 
 /**

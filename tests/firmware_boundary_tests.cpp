@@ -67,6 +67,7 @@ void test_simulation_sources_are_not_in_firmware_repository() {
         "src/evaluate.cpp",
         "tools/policy_search.cpp",
         "tools/export_linear_policy.py",
+        "tools/static_policy_params.txt",
     };
 
     for (const std::string& path : forbidden_paths) {

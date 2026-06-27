@@ -71,9 +71,9 @@ FLIGHT_CONTROL_DIR=../stm32h750-flight-control python3 tools/export_linear_polic
 ./build/flight_control_control_param_search 3 coordinate
 ```
 
-`flight_control_policy_search` 搜索姿态模型权重等价参数；`flight_control_control_param_search` 在不改变飞机真值模型的前提下搜索速度外环、模型力矩缩放和 PWM 混控参数。`export_linear_policy.py` 将最优历史策略精确导出回本仓库的 `StaticMlpPolicy` 72-128-128-3 权重。
+`flight_control_policy_search` 搜索姿态模型权重等价参数；`flight_control_control_param_search` 在不改变飞机真值模型的前提下搜索速度外环、模型力矩缩放和 PWM 混控参数。`export_linear_policy.py` 将最优历史策略精确导出回本仓库的 `StaticMlpPolicy` 144-256-256-3 权重。
 
-当前模型使用 8 帧历史输入和分段 ReLU 历史特征表达大扰动下的非线性补偿；搜索得到的 86 维策略参数保存在仿真仓库 `tools/static_policy_params.txt`，闭环控制参数保存在仿真仓库 `tools/control_params.txt`。最新闭环验证平均分为 `90.499/100`，五个场景全部稳定。
+当前模型使用 16 帧历史输入，在 250Hz 控制周期下覆盖约 64ms；导出策略显式使用最近 12 帧姿态误差、10 帧角速度、6 帧上一动作，并加入误差/角速度/上一动作的一阶变化 ReLU 门控。搜索得到的 152 维策略参数保存在仿真仓库 `tools/static_policy_params.txt`，闭环控制参数保存在仿真仓库 `tools/control_params.txt`。最新闭环验证平均分为 `90.873/100`，五个场景全部稳定。
 
 ## 构建与验证
 

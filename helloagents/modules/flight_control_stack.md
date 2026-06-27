@@ -10,7 +10,7 @@
 ## 控制层
 
 - `SpeedController`: 速度外环，输出目标姿态、目标加速度和 collective。内部将爬升率积分为目标高度，并用高度误差修正竖直速度目标，避免爬升结束或负载扰动后锁定到错误高度。
-- `ModelAdapter`: 将姿态误差、角速度和上一帧动作组成 8 帧历史窗口，喂给生成的 MLP 姿态策略。
+- `ModelAdapter`: 将姿态误差、角速度和上一帧动作组成 16 帧历史窗口，喂给生成的 MLP 姿态策略。
 - `TorqueController`: 将 collective 和 NN 输出力矩混控为四路 PWM，并带 PWM slew 限制，模拟实际链路不能瞬时响应的约束。
 
 ## 固件端口
@@ -23,8 +23,8 @@
 ## 独立仿真层
 
 - `../stm32h750-flight-sim/flight_control_eval`: 生成 CSV 指标和 Markdown 报告。
-- `../stm32h750-flight-sim/flight_control_policy_search`: 搜索姿态模型权重等价参数；当前搜索 86 维参数并导出 72-128-128-3 静态 MLP。
-- `../stm32h750-flight-sim/flight_control_control_param_search`: 搜索速度外环、模型力矩缩放和 PWM 混控参数，当前闭环评估为 5/5 稳定、平均分 `90.499/100`。
+- `../stm32h750-flight-sim/flight_control_policy_search`: 搜索姿态模型权重等价参数；当前搜索 152 维参数并导出 144-256-256-3 静态 MLP。
+- `../stm32h750-flight-sim/flight_control_control_param_search`: 搜索速度外环、模型力矩缩放和 PWM 混控参数，当前闭环评估为 5/5 稳定、平均分 `90.873/100`。
 - `../stm32h750-flight-sim/tools/export_linear_policy.py`: 将搜索得到的线性历史项和分段 ReLU 非线性补偿导出成 `StaticMlpPolicy` 的静态 MLP 权重，并写回飞控仓库 `src/model/generated_policy.cpp`。
 - `../stm32h750-flight-sim/flight_control_system_tests`: 把五个评估场景作为 CTest 回归门槛。
 - `firmware_boundary_tests`: 在飞控仓库内检查固件核心 target、旧 host/eval 目录和核心头文件，确保仿真环境不回流到真机固件工程。

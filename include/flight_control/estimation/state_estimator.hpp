@@ -37,8 +37,12 @@ struct StateEstimatorConfig {
     float accel_correction_gain{1.6f};
     /** 外部姿态观测融合增益。 */
     float attitude_observation_gain{0.08f};
+    /** 姿态观测对陀螺仪零偏的误差状态学习增益。 */
+    float gyro_bias_observation_gain{0.018f};
     /** 外部速度观测融合增益。 */
     float velocity_observation_gain{0.18f};
+    /** 速度观测对世界系加速度慢偏的误差状态学习增益。 */
+    float accel_bias_observation_gain{0.045f};
     /** 外部位置观测融合增益。 */
     float position_observation_gain{0.08f};
     /** 静止附近陀螺仪零偏学习增益。 */
@@ -92,11 +96,12 @@ private:
      */
     void initialize(const SensorPacket& packet, const StateEstimatorObservation& observation);
     /**
-     * 融合外部姿态观测。
+     * 使用右不变误差融合外部姿态观测。
      *
      * @param observed_attitude 外部姿态观测。
+     * @param dt 积分步长，单位秒。
      */
-    void blend_attitude(const Quaternion& observed_attitude);
+    void apply_invariant_attitude_observation(const Quaternion& observed_attitude, float dt);
     /**
      * 检查当前内部状态是否为有限值。
      *
@@ -117,6 +122,8 @@ private:
     VehicleState state_{};
     /** 当前估计陀螺仪零偏，单位 rad/s。 */
     Vector3 gyro_bias_rad_s_{};
+    /** 当前估计世界系加速度慢偏，单位 m/s^2。 */
+    Vector3 accel_bias_world_m_s2_{};
     /** 上一次传感器时间戳，单位秒。 */
     float last_timestamp_sec_{0.0f};
     /** 是否已完成初始化。 */

@@ -23,18 +23,6 @@ Vector3 cross(const Vector3& lhs, const Vector3& rhs) {
 }
 
 /**
- * 对标量执行线性插值。
- *
- * @param lhs 起始值。
- * @param rhs 目标值。
- * @param gain 融合增益。
- * @return 插值结果。
- */
-float blend(float lhs, float rhs, float gain) {
-    return lhs + (rhs - lhs) * std::clamp(gain, 0.0f, 1.0f);
-}
-
-/**
  * 对向量执行线性插值。
  *
  * @param lhs 起始向量。
@@ -43,22 +31,27 @@ float blend(float lhs, float rhs, float gain) {
  * @return 插值结果。
  */
 Vector3 blend(const Vector3& lhs, const Vector3& rhs, float gain) {
+    const float safe_gain = std::clamp(gain, 0.0f, 1.0f);
     return {
-        blend(lhs.x, rhs.x, gain),
-        blend(lhs.y, rhs.y, gain),
-        blend(lhs.z, rhs.z, gain),
+        lhs.x + (rhs.x - lhs.x) * safe_gain,
+        lhs.y + (rhs.y - lhs.y) * safe_gain,
+        lhs.z + (rhs.z - lhs.z) * safe_gain,
     };
 }
 
 /**
- * 计算四元数点积。
+ * 计算姿态观测右不变误差向量。
  *
- * @param lhs 左四元数。
- * @param rhs 右四元数。
- * @return 点积结果。
+ * @param target 外部观测姿态。
+ * @param current 当前估计姿态。
+ * @return 小角度误差向量，单位 rad。
  */
-float quaternion_dot(const Quaternion& lhs, const Quaternion& rhs) {
-    return lhs.w * rhs.w + lhs.x * rhs.x + lhs.y * rhs.y + lhs.z * rhs.z;
+Vector3 attitude_innovation(const Quaternion& target, const Quaternion& current) {
+    Quaternion error = attitude_error(normalize(target), normalize(current));
+    if (error.w < 0.0f) {
+        error = {-error.w, -error.x, -error.y, -error.z};
+    }
+    return {2.0f * error.x, 2.0f * error.y, 2.0f * error.z};
 }
 
 /**
@@ -92,6 +85,7 @@ void StateEstimator::reset() {
     state_ = {};
     state_.healthy = false;
     gyro_bias_rad_s_ = {};
+    accel_bias_world_m_s2_ = {};
     last_timestamp_sec_ = 0.0f;
     initialized_ = false;
 }
@@ -123,13 +117,16 @@ VehicleState StateEstimator::update(const SensorPacket& packet, const StateEstim
 
     state_.attitude = integrate_body_rates(state_.attitude, body_rates, dt);
     if (observation.attitude_valid) {
-        blend_attitude(observation.attitude);
+        apply_invariant_attitude_observation(observation.attitude, dt);
     }
 
-    const Vector3 acceleration_world = rotate(state_.attitude, packet.accel_m_s2) - Vector3{0.0f, 0.0f, kGravity};
+    const Vector3 acceleration_world =
+        rotate(state_.attitude, packet.accel_m_s2) - Vector3{0.0f, 0.0f, kGravity} - accel_bias_world_m_s2_;
     state_.velocity_m_s += acceleration_world * dt;
     state_.position_m += state_.velocity_m_s * dt;
     if (observation.velocity_valid) {
+        const Vector3 velocity_innovation = state_.velocity_m_s - observation.velocity_m_s;
+        accel_bias_world_m_s2_ += velocity_innovation * (config_.accel_bias_observation_gain * dt);
         state_.velocity_m_s = blend(state_.velocity_m_s, observation.velocity_m_s, config_.velocity_observation_gain);
     }
     if (observation.position_valid) {
@@ -160,13 +157,11 @@ void StateEstimator::initialize(const SensorPacket& packet, const StateEstimator
     initialized_ = true;
 }
 
-void StateEstimator::blend_attitude(const Quaternion& observed_attitude) {
-    Quaternion target = normalize(observed_attitude);
-    if (quaternion_dot(state_.attitude, target) < 0.0f) {
-        target = {-target.w, -target.x, -target.y, -target.z};
-    }
+void StateEstimator::apply_invariant_attitude_observation(const Quaternion& observed_attitude, float dt) {
+    const Vector3 innovation = attitude_innovation(observed_attitude, state_.attitude);
     const float gain = std::clamp(config_.attitude_observation_gain, 0.0f, 1.0f);
-    state_.attitude = normalize(state_.attitude * (1.0f - gain) + target * gain);
+    state_.attitude = integrate_body_rates(state_.attitude, innovation * gain, 1.0f);
+    gyro_bias_rad_s_ -= innovation * (config_.gyro_bias_observation_gain * std::max(dt, 1.0e-4f));
 }
 
 bool StateEstimator::state_is_finite() const {

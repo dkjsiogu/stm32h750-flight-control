@@ -16,6 +16,7 @@ add_library(flight_control_firmware_core
     src/data/history_window.cpp
     src/estimation/state_estimator.cpp
     src/model/model_adapter.cpp
+    src/model/adaptive_tcn_policy.cpp
     src/model/generated_policy.cpp
     src/model/static_mlp_policy.cpp
     src/runtime/synchronization.cpp

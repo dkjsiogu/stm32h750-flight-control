@@ -15,7 +15,7 @@
 1. `Stm32SensorSource` 通过板级 hook 读取真实 IMU、电池和可选外部观测，并由 `StateEstimator` 生成控制状态。
 2. `Stm32CommandSource` 读取目标速度、爬升率和 yaw 角速度。
 3. `SpeedController` 将目标速度转换为目标姿态和 collective。
-4. `ModelAdapter` 将真实历史状态滑动窗口喂给静态 MLP 姿态模型，输出目标力矩。
+4. `ModelAdapter` 将真实历史状态滑动窗口喂给自适应 TCN/RMA 姿态模型，输出目标力矩。
 5. `TorqueController` 将目标力矩混控为四路 PWM。
 6. `Stm32PwmOutput` 将 PWM 写入真实电机/电调链路。
 
@@ -61,7 +61,7 @@ cmake --build build
 
 ## 姿态模型优化
 
-当前姿态模型仍然是固件内的静态 MLP 权重，不依赖运行时训练框架。优化流程是：
+当前姿态模型是固件内的 `AdaptiveTcnPolicy`，不依赖运行时训练框架。优化流程是：
 
 ```bash
 cd ../stm32h750-flight-sim
@@ -71,9 +71,9 @@ FLIGHT_CONTROL_DIR=../stm32h750-flight-control python3 tools/export_linear_polic
 ./build/flight_control_control_param_search 3 coordinate
 ```
 
-`flight_control_policy_search` 搜索姿态模型权重等价参数；`flight_control_control_param_search` 在不改变飞机真值模型的前提下搜索速度外环、模型力矩缩放和 PWM 混控参数。`export_linear_policy.py` 将最优历史策略精确导出回本仓库的 `StaticMlpPolicy` 144-256-256-3 权重。
+`flight_control_policy_search` 搜索姿态模型 TCN/RMA 参数，并带鲁棒 INDI teacher 蒸馏项；`flight_control_control_param_search` 在不改变飞机真值模型的前提下搜索速度外环、模型力矩缩放和 PWM 混控参数。`export_linear_policy.py` 将最优历史策略精确导出回本仓库的 `AdaptiveTcnPolicy` 静态参数。
 
-当前模型使用 16 帧历史输入，在 250Hz 控制周期下覆盖约 64ms；导出策略显式使用最近 12 帧姿态误差、10 帧角速度、6 帧上一动作，并加入误差/角速度/上一动作的一阶变化 ReLU 门控。搜索得到的 152 维策略参数保存在仿真仓库 `tools/static_policy_params.txt`，闭环控制参数保存在仿真仓库 `tools/control_params.txt`。最新闭环验证平均分为 `90.873/100`，五个场景全部稳定。
+当前模型使用 16 帧历史输入，在 250Hz 控制周期下覆盖约 64ms；TCN 时间核显式使用最近 12 帧姿态误差、10 帧角速度、6 帧上一动作，并由 RMA latent 从历史残差中估计风、载荷和执行器滞后。搜索得到的 152 维策略参数保存在仿真仓库 `tools/static_policy_params.txt`，闭环控制参数保存在仿真仓库 `tools/control_params.txt`。最新闭环验证平均分为 `90.894/100`，五个场景全部稳定。
 
 ## 构建与验证
 

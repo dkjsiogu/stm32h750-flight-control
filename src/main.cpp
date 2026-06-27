@@ -20,7 +20,7 @@ int main() {
     auto sensors = std::make_shared<Stm32SensorSource>();
     auto commands = std::make_shared<Stm32CommandSource>();
     auto pwm_output = std::make_shared<Stm32PwmOutput>();
-    auto policy = std::make_shared<StaticMlpPolicy>(make_generated_policy_weights());
+    auto policy = make_generated_policy();
     auto critical_section = std::make_shared<Stm32CriticalSection>();
 
     FlightApplication app({

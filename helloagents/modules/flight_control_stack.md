@@ -10,12 +10,12 @@
 ## 控制层
 
 - `SpeedController`: 速度外环，输出目标姿态、目标加速度和 collective。内部将爬升率积分为目标高度，并用高度误差修正竖直速度目标，避免爬升结束或负载扰动后锁定到错误高度。
-- `ModelAdapter`: 将姿态误差、角速度和上一帧动作组成 16 帧历史窗口，喂给生成的 MLP 姿态策略。
+- `ModelAdapter`: 将姿态误差、角速度和上一帧动作组成 16 帧历史窗口，喂给生成的自适应 TCN/RMA 姿态策略。
 - `TorqueController`: 将 collective 和 NN 输出力矩混控为四路 PWM，并带 PWM slew 限制，模拟实际链路不能瞬时响应的约束。
 
 ## 固件端口
 
-- `src/main.cpp`: STM32 固件装配入口，注入 `FreertosTaskRunner`、`Stm32SensorSource`、`Stm32CommandSource`、`Stm32PwmOutput`、`Stm32CriticalSection` 和生成的静态 MLP。
+- `src/main.cpp`: STM32 固件装配入口，注入 `FreertosTaskRunner`、`Stm32SensorSource`、`Stm32CommandSource`、`Stm32PwmOutput`、`Stm32CriticalSection` 和生成的自适应 TCN 策略。
 - `Stm32SensorSource`: 通过 `flight_control_board_read_sensors` 读取真实原始传感器和可选外部观测，由 `StateEstimator` 生成控制状态，核心 `FlightTelemetry` 不包含仿真真值。
 - `Stm32PwmOutput`: 通过 `flight_control_board_write_pwm` 写真实电调/电机 PWM。
 - `boards/stm32h743/include/board_io.hpp`: 真实底层驱动契约，覆盖系统早期初始化、驱动初始化、failsafe 输出、IMU、外部观测、指令输入、PWM 输出、风估计、链路延迟和临界区。
@@ -23,8 +23,8 @@
 ## 独立仿真层
 
 - `../stm32h750-flight-sim/flight_control_eval`: 生成 CSV 指标和 Markdown 报告。
-- `../stm32h750-flight-sim/flight_control_policy_search`: 搜索姿态模型权重等价参数；当前搜索 152 维参数并导出 144-256-256-3 静态 MLP。
-- `../stm32h750-flight-sim/flight_control_control_param_search`: 搜索速度外环、模型力矩缩放和 PWM 混控参数，当前闭环评估为 5/5 稳定、平均分 `90.873/100`。
-- `../stm32h750-flight-sim/tools/export_linear_policy.py`: 将搜索得到的线性历史项和分段 ReLU 非线性补偿导出成 `StaticMlpPolicy` 的静态 MLP 权重，并写回飞控仓库 `src/model/generated_policy.cpp`。
+- `../stm32h750-flight-sim/flight_control_policy_search`: 搜索姿态模型权重等价参数；当前搜索 152 维 TCN/RMA 参数，并加入鲁棒 INDI teacher 蒸馏项。
+- `../stm32h750-flight-sim/flight_control_control_param_search`: 搜索速度外环、模型力矩缩放和 PWM 混控参数，当前闭环评估为 5/5 稳定、平均分 `90.894/100`。
+- `../stm32h750-flight-sim/tools/export_linear_policy.py`: 将搜索得到的 TCN/RMA 参数导出成 `AdaptiveTcnPolicy` 的静态参数，并写回飞控仓库 `src/model/generated_policy.cpp`。
 - `../stm32h750-flight-sim/flight_control_system_tests`: 把五个评估场景作为 CTest 回归门槛。
 - `firmware_boundary_tests`: 在飞控仓库内检查固件核心 target、旧 host/eval 目录和核心头文件，确保仿真环境不回流到真机固件工程。

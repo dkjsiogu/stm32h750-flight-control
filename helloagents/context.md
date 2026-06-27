@@ -5,7 +5,7 @@
 构建面向 `STM32H750VBT6` / `STM32H743` 的可烧录飞控固件主体，主链路为：
 
 ```text
-SensorSource -> SpeedController -> ModelAdapter/StaticMlpPolicy -> TorqueController -> PwmOutput
+SensorSource -> SpeedController -> ModelAdapter/AdaptiveTcnPolicy -> TorqueController -> PwmOutput
 ```
 
 核心模型只负责从姿态误差、角速度和历史动作窗口输出目标力矩；速度外环负责把目标速度、上升下降和偏航速率转换成目标姿态与 collective；力矩控制器负责把目标力矩混控为四路 PWM。
@@ -26,4 +26,4 @@ H743 真实烧录模式为 `H743_DRIVER_MODE=real`。该模式必须提供 `driv
 
 ## 当前模型状态
 
-姿态模型仍然是 `StaticMlpPolicy` 静态 MLP 权重，当前结构为 144-256-256-3，对应 16 帧历史输入。最近一次优化扩大了历史窗口和模型容量，显式使用 12 帧姿态误差、10 帧角速度、6 帧上一动作，并加入一阶变化门控；独立仿真仓库的 `flight_control_eval` 当前 5/5 场景稳定，平均分 `90.873/100`。
+姿态模型已切换为 `AdaptiveTcnPolicy`，对应 16 帧历史输入。当前策略显式使用 12 帧姿态误差、10 帧角速度、6 帧上一动作，RMA latent 从历史残差估计风、载荷和执行器滞后；状态估计器已升级为误差状态式姿态/零偏/速度慢偏修正。独立仿真仓库的 `flight_control_eval` 当前 5/5 场景稳定，平均分 `90.894/100`。

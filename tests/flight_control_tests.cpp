@@ -8,6 +8,7 @@
 #include "flight_control/control/torque_controller.hpp"
 #include "flight_control/data/history_window.hpp"
 #include "flight_control/estimation/state_estimator.hpp"
+#include "flight_control/model/adaptive_tcn_policy.hpp"
 #include "flight_control/model/model_adapter.hpp"
 #include "flight_control/model/generated_policy.hpp"
 #include "flight_control/model/static_mlp_policy.hpp"
@@ -176,12 +177,22 @@ void test_static_mlp_zero_weights() {
           "zero static mlp weights produce zero output");
 }
 
-void test_generated_policy_is_finite() {
-    flight_control::StaticMlpPolicy policy(flight_control::make_generated_policy_weights());
+void test_adaptive_tcn_zero_weights() {
+    auto weights = std::make_shared<flight_control::AdaptiveTcnPolicyWeights>();
+    flight_control::AdaptiveTcnPolicy policy(weights);
     std::array<float, flight_control::kModelInputDim> input{};
     const auto output = policy.predict(input);
+    check(output[0] == 0.0f && output[1] == 0.0f && output[2] == 0.0f,
+          "zero adaptive tcn weights produce zero output");
+}
+
+void test_generated_policy_is_finite() {
+    auto policy = flight_control::make_generated_policy();
+    std::array<float, flight_control::kModelInputDim> input{};
+    const auto output = policy->predict(input);
     check(std::isfinite(output[0]) && std::isfinite(output[1]) && std::isfinite(output[2]),
           "generated policy output is finite");
+    check(flight_control::make_generated_tcn_policy_weights() != nullptr, "generated tcn weights exist");
     const auto config = flight_control::generated_model_config();
     check(config.torque_limit_nm > 0.0f, "generated model config has torque scale");
 }
@@ -198,6 +209,7 @@ int main() {
     test_state_estimator_stationary_observation();
     test_state_estimator_rejects_zero_imu();
     test_static_mlp_zero_weights();
+    test_adaptive_tcn_zero_weights();
     test_generated_policy_is_finite();
     std::cout << "flight_control_tests passed\n";
     return 0;

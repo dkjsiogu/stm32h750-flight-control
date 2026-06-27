@@ -34,6 +34,10 @@ constexpr std::size_t kLinearScaleIndex = kLinearParamsPerAxis * 3U;
 constexpr std::size_t kGateStartIndex = kLinearScaleIndex + 1U;
 /** 非线性门控全局缩放参数下标。 */
 constexpr std::size_t kNonlinearScaleIndex = kGateStartIndex + kNonlinearParamsPerAxis * 3U;
+/** RMA encoder 输入摘要维度。 */
+constexpr std::size_t kRmaSummaryDim = 16U;
+/** RMA encoder 参数起始下标。 */
+constexpr std::size_t kRmaEncoderStartIndex = kNonlinearScaleIndex + 1U;
 
 /**
  * 读取指定历史帧的指定值。
@@ -142,12 +146,19 @@ std::array<float, kAdaptiveTcnOutputDim> AdaptiveTcnPolicy::predict(const std::a
 std::array<float, kAdaptiveTcnLatentDim> AdaptiveTcnPolicy::encode_latent(
     const std::array<float, kModelInputDim>& input) const {
     std::array<float, kAdaptiveTcnLatentDim> latent{};
+    if (!weights_) {
+        return latent;
+    }
+    const auto& params = weights_->params;
     std::array<float, 3> error_mean{};
     std::array<float, 3> omega_mean{};
     std::array<float, 3> action_mean{};
+    std::array<float, 3> target_accel_mean{};
+    std::array<float, 3> angular_accel_mean{};
     std::array<float, 3> error_delta_mean{};
     std::array<float, 3> omega_delta_mean{};
     std::array<float, 3> action_delta_mean{};
+    float collective_mean = 0.0f;
 
     constexpr float inv_window = 1.0f / static_cast<float>(kHistoryFrames - 1U);
     for (std::size_t frame = 0; frame < kHistoryFrames; ++frame) {
@@ -155,7 +166,10 @@ std::array<float, kAdaptiveTcnLatentDim> AdaptiveTcnPolicy::encode_latent(
             error_mean[axis] += frame_value(input, frame, axis);
             omega_mean[axis] += frame_value(input, frame, axis + 3U);
             action_mean[axis] += frame_value(input, frame, axis + 6U);
+            target_accel_mean[axis] += frame_value(input, frame, axis + 9U);
+            angular_accel_mean[axis] += frame_value(input, frame, axis + 13U);
         }
+        collective_mean += frame_value(input, frame, 12U);
         if (frame > 0U) {
             for (std::size_t axis = 0; axis < 3U; ++axis) {
                 error_delta_mean[axis] += frame_value(input, frame, axis) - frame_value(input, frame - 1U, axis);
@@ -169,10 +183,13 @@ std::array<float, kAdaptiveTcnLatentDim> AdaptiveTcnPolicy::encode_latent(
         error_mean[axis] /= static_cast<float>(kHistoryFrames);
         omega_mean[axis] /= static_cast<float>(kHistoryFrames);
         action_mean[axis] /= static_cast<float>(kHistoryFrames);
+        target_accel_mean[axis] /= static_cast<float>(kHistoryFrames);
+        angular_accel_mean[axis] /= static_cast<float>(kHistoryFrames);
         error_delta_mean[axis] *= inv_window;
         omega_delta_mean[axis] *= inv_window;
         action_delta_mean[axis] *= inv_window;
     }
+    collective_mean /= static_cast<float>(kHistoryFrames);
 
     for (std::size_t axis = 0; axis < 3U; ++axis) {
         latent[axis] = latent_squash(
@@ -186,6 +203,33 @@ std::array<float, kAdaptiveTcnLatentDim> AdaptiveTcnPolicy::encode_latent(
     latent[7U] = latent_squash(
         std::fabs(error_delta_mean[0]) + std::fabs(error_delta_mean[1]) +
         0.65f * std::fabs(omega_delta_mean[2]));
+
+    const std::array<float, kRmaSummaryDim> summary{
+        error_mean[0],
+        error_mean[1],
+        error_mean[2],
+        omega_mean[0],
+        omega_mean[1],
+        omega_mean[2],
+        action_mean[0],
+        action_mean[1],
+        action_mean[2],
+        target_accel_mean[0],
+        target_accel_mean[1],
+        target_accel_mean[2],
+        collective_mean,
+        angular_accel_mean[0],
+        angular_accel_mean[1],
+        angular_accel_mean[2],
+    };
+    for (std::size_t latent_index = 0; latent_index < kAdaptiveTcnLatentDim; ++latent_index) {
+        const std::size_t offset = kRmaEncoderStartIndex + latent_index * (kRmaSummaryDim + 1U);
+        float value = params[offset + kRmaSummaryDim];
+        for (std::size_t summary_index = 0; summary_index < kRmaSummaryDim; ++summary_index) {
+            value += params[offset + summary_index] * summary[summary_index];
+        }
+        latent[latent_index] = latent_squash(latent[latent_index] + 0.35f * std::tanh(value));
+    }
     return latent;
 }
 

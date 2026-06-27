@@ -1,5 +1,7 @@
 #pragma once
 
+#include <array>
+
 #include "flight_control/data/flight_types.hpp"
 
 namespace flight_control {
@@ -15,6 +17,10 @@ struct StateEstimatorObservation {
     bool attitude_valid{false};
     /** 外部姿态观测，表示机体系到世界系的旋转。 */
     Quaternion attitude{};
+    /** yaw 观测是否有效，通常来自磁力计、双天线 GPS 或视觉航向。 */
+    bool yaw_valid{false};
+    /** 外部 yaw 观测，单位 rad，世界系 z 轴航向角。 */
+    float yaw_rad{0.0f};
     /** 速度观测是否有效。 */
     bool velocity_valid{false};
     /** 外部速度观测，单位 m/s，世界系 xyz。 */
@@ -47,6 +53,24 @@ struct StateEstimatorConfig {
     float position_observation_gain{0.08f};
     /** 静止附近陀螺仪零偏学习增益。 */
     float gyro_bias_learning_gain{0.018f};
+    /** 姿态误差状态过程噪声，数值越大表示更信任外部姿态观测。 */
+    float attitude_process_noise{0.0018f};
+    /** 速度误差状态过程噪声，数值越大表示速度协方差增长越快。 */
+    float velocity_process_noise{0.035f};
+    /** 位置误差状态过程噪声，数值越大表示位置协方差增长越快。 */
+    float position_process_noise{0.012f};
+    /** 姿态观测方差，用于 NIS 创新降权。 */
+    float attitude_observation_variance{0.035f};
+    /** yaw 观测方差，用于 NIS 创新降权。 */
+    float yaw_observation_variance{0.055f};
+    /** 速度观测方差，用于 NIS 创新降权。 */
+    float velocity_observation_variance{0.20f};
+    /** 位置观测方差，用于 NIS 创新降权。 */
+    float position_observation_variance{0.45f};
+    /** NIS 软门限，超过该值的观测会被降权而不是硬丢弃。 */
+    float nis_gate{9.0f};
+    /** 观测被判定为异常时保留的最小融合权重。 */
+    float min_observation_weight{0.08f};
     /** 判断静止附近的陀螺仪角速度阈值，单位 rad/s。 */
     float gyro_stationary_threshold_rad_s{0.08f};
     /** 允许使用加速度重力方向的最小模长，单位 m/s^2。 */
@@ -103,6 +127,28 @@ private:
      */
     void apply_invariant_attitude_observation(const Quaternion& observed_attitude, float dt);
     /**
+     * 使用 yaw 观测修正当前姿态航向。
+     *
+     * @param yaw_rad 外部 yaw 观测，单位 rad。
+     * @param dt 积分步长，单位秒。
+     */
+    void apply_yaw_observation(float yaw_rad, float dt);
+    /**
+     * 根据创新和方差计算 NIS 风格软权重。
+     *
+     * @param innovation_sq 创新平方和。
+     * @param variance 观测方差。
+     * @param dimension 观测维度。
+     * @return 0 到 1 的观测权重。
+     */
+    float observation_weight(float innovation_sq, float variance, float dimension) const;
+    /**
+     * 推进误差状态协方差对角线。
+     *
+     * @param dt 积分步长，单位秒。
+     */
+    void propagate_covariance(float dt);
+    /**
      * 检查当前内部状态是否为有限值。
      *
      * @return true 表示状态可用于闭环控制。
@@ -122,8 +168,10 @@ private:
     VehicleState state_{};
     /** 当前估计陀螺仪零偏，单位 rad/s。 */
     Vector3 gyro_bias_rad_s_{};
-    /** 当前估计世界系加速度慢偏，单位 m/s^2。 */
-    Vector3 accel_bias_world_m_s2_{};
+    /** 当前估计机体系加速度慢偏，单位 m/s^2。 */
+    Vector3 accel_bias_body_m_s2_{};
+    /** 右不变误差状态协方差对角线，顺序为姿态、速度、位置。 */
+    std::array<float, 9> covariance_diag_{};
     /** 上一次传感器时间戳，单位秒。 */
     float last_timestamp_sec_{0.0f};
     /** 是否已完成初始化。 */

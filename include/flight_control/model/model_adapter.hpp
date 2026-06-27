@@ -25,6 +25,18 @@ struct ModelNormalization {
     std::array<float, 3> previous_action_mean{0.0f, 0.0f, 0.0f};
     /** 上一帧归一化动作标准差。 */
     std::array<float, 3> previous_action_std{1.0f, 1.0f, 1.0f};
+    /** 速度外环目标加速度均值，单位 m/s^2。 */
+    std::array<float, 3> target_acceleration_mean{0.0f, 0.0f, 0.0f};
+    /** 速度外环目标加速度标准差，单位 m/s^2。 */
+    std::array<float, 3> target_acceleration_std{4.0f, 4.0f, 4.0f};
+    /** collective 均值。 */
+    float collective_mean{0.45f};
+    /** collective 标准差。 */
+    float collective_std{0.20f};
+    /** 角加速度均值，单位 rad/s^2。 */
+    std::array<float, 3> angular_accel_mean{0.0f, 0.0f, 0.0f};
+    /** 角加速度标准差，单位 rad/s^2。 */
+    std::array<float, 3> angular_accel_std{12.0f, 12.0f, 9.0f};
 };
 
 /**
@@ -39,6 +51,12 @@ struct ModelAdapterConfig {
     float target_reset_threshold{0.25f};
     /** 输入归一化参数。 */
     ModelNormalization normalization{};
+    /** 安全滤波最大倾角，单位 rad；超过后会抑制水平力矩。 */
+    float safety_max_tilt_rad{0.92f};
+    /** 安全滤波最大角速度，单位 rad/s；超过后会抑制同向力矩。 */
+    float safety_max_angular_rate_rad_s{7.5f};
+    /** 安全滤波最小保留力矩比例，避免完全切断闭环控制。 */
+    float safety_min_torque_scale{0.28f};
 };
 
 /**
@@ -93,6 +111,14 @@ private:
      * @return 归一化后的输入向量。
      */
     std::array<float, kModelInputDim> normalize_input(const std::array<float, kModelInputDim>& input) const;
+    /**
+     * 对模型动作执行安全滤波。
+     *
+     * @param action 模型输出的三轴归一化动作。
+     * @param state 当前飞行状态。
+     * @return 经过倾角和角速度屏障滤波后的动作。
+     */
+    std::array<float, 3> apply_safety_filter(std::array<float, 3> action, const VehicleState& state) const;
 
     /** 注入的姿态策略。 */
     std::shared_ptr<IAttitudePolicy> policy_;
@@ -102,10 +128,14 @@ private:
     HistoryWindow history_;
     /** 最近一次动作，作为输入历史的一部分。 */
     std::array<float, 3> previous_action_{0.0f, 0.0f, 0.0f};
+    /** 上一帧角速度，用于估计角加速度。 */
+    Vector3 previous_angular_velocity_rad_s_{};
     /** 最近一次目标姿态。 */
     Quaternion last_target_{};
     /** 最近一次目标姿态是否已记录。 */
     bool has_last_target_{false};
+    /** 上一帧角速度是否已记录。 */
+    bool has_previous_angular_velocity_{false};
 };
 
 }  // namespace flight_control

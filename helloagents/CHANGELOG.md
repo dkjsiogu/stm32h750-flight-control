@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.6.0] - 2026-06-28
+
+### Added
+
+- **[model]**: `ModelAdapter` 单帧输入扩展为 16 维，加入姿态误差 log map、目标加速度、collective 和角加速度历史；`AdaptiveTcnPolicy` 参数扩展到 288 维，并加入学习式 RMA summary encoder。
+- **[safety]**: 姿态模型输出后新增 CBF 风格安全滤波，对接近倾角和角速度边界的同向力矩做软衰减。
+- **[estimation]**: `StateEstimatorObservation` 新增 yaw 观测入口；状态估计器新增误差状态协方差对角线、NIS 风格创新降权和机体系加速度慢偏学习。
+- **[tests]**: 新增 yaw 观测融合和异常位置观测降权回归测试。
+
+### Changed
+
+- **[training]**: 仿真训练改为 288 维策略搜索，训练 seed `20260628/20260630`、开发 seed `20260631`、验证 seed `20260629` 分离，降低固定场景过拟合。
+- **[control]**: 速度外环、模型力矩缩放和混控参数使用训练/开发随机化场景重新联合优化。
+- **[evaluation]**: 固定五场景保持 `5/5` 稳定，平均分提升到 `90.088/100`；随机验证 seed `20260629` 保持 `5/5` 稳定，平均分提升到 `87.462/100`，最弱场景分 `80.768`。
+- **[firmware]**: H743 stub 构建通过，当前 `flight_control_h743.elf` 的 `.text` 为 `78,496 bytes`。
+
 ## [0.5.0] - 2026-06-27
 
 ### Added

@@ -129,7 +129,7 @@ struct MotorPwmFrame {
 /**
  * 神经网络历史窗口中的单帧输入。
  *
- * 一帧包含姿态误差、角速度和上一动作，维度由 kFrameDim 定义。
+ * 一帧包含姿态误差、角速度、上一动作、目标加速度、collective 和角加速度。
  */
 struct ModelFrame {
     /** 单帧模型输入值。 */

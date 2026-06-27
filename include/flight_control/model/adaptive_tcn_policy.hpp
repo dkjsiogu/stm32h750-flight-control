@@ -7,8 +7,8 @@
 
 namespace flight_control {
 
-/** 自适应 TCN 姿态策略参数数量；包含时间卷积核、门控项和 RMA latent 耦合项。 */
-constexpr std::size_t kAdaptiveTcnParameterCount = 152;
+/** 自适应 TCN 姿态策略参数数量；包含时间卷积核、门控项、RMA encoder 和 latent 耦合项。 */
+constexpr std::size_t kAdaptiveTcnParameterCount = 288;
 /** 自适应 TCN 输出维度，对应 roll、pitch、yaw 三轴归一化动作。 */
 constexpr std::size_t kAdaptiveTcnOutputDim = 3;
 /** RMA 隐变量维度，用于表达风、载荷、执行器滞后和未建模扰动的历史估计。 */

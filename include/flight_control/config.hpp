@@ -7,8 +7,8 @@ namespace flight_control {
 /** 飞控模型历史窗口包含的连续状态帧数量；16 帧在 250Hz 下约覆盖 64ms。 */
 constexpr std::size_t kHistoryFrames = 16;
 
-/** 单帧神经网络输入维度：姿态误差 3 维、角速度 3 维、上一动作 3 维。 */
-constexpr std::size_t kFrameDim = 9;
+/** 单帧神经网络输入维度：姿态误差、角速度、上一动作、外环前馈、collective 和角加速度。 */
+constexpr std::size_t kFrameDim = 16;
 
 /** 神经网络完整输入维度，由历史帧数和单帧维度相乘得到。 */
 constexpr std::size_t kModelInputDim = kHistoryFrames * kFrameDim;

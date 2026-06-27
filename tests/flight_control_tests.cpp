@@ -168,6 +168,45 @@ void test_state_estimator_rejects_zero_imu() {
     check(!state.healthy, "state estimator rejects missing imu acceleration");
 }
 
+void test_state_estimator_yaw_observation() {
+    flight_control::StateEstimator estimator;
+    flight_control::SensorPacket packet{};
+    packet.accel_m_s2 = {0.0f, 0.0f, flight_control::kGravity};
+    packet.battery_voltage_v = 16.0f;
+
+    estimator.update(packet, {});
+
+    flight_control::StateEstimatorObservation observation{};
+    observation.yaw_valid = true;
+    observation.yaw_rad = 0.7f;
+    for (int index = 1; index <= 12; ++index) {
+        packet.timestamp_sec = static_cast<float>(index) * flight_control::kDefaultControlPeriodSec;
+        estimator.update(packet, observation);
+    }
+
+    const float yaw = flight_control::to_euler_zyx(estimator.state().attitude).z;
+    check(yaw > 0.05f && yaw < 0.7f, "state estimator softly follows yaw observation");
+}
+
+void test_state_estimator_downweights_position_outlier() {
+    flight_control::StateEstimator estimator;
+    flight_control::SensorPacket packet{};
+    packet.accel_m_s2 = {0.0f, 0.0f, flight_control::kGravity};
+    packet.position_m = {0.0f, 0.0f, 1.0f};
+    packet.battery_voltage_v = 16.0f;
+
+    flight_control::StateEstimatorObservation observation{};
+    observation.position_valid = true;
+    observation.position_m = {0.0f, 0.0f, 1.0f};
+    estimator.update(packet, observation);
+
+    packet.timestamp_sec = flight_control::kDefaultControlPeriodSec;
+    observation.position_m = {0.0f, 0.0f, 50.0f};
+    const auto state = estimator.update(packet, observation);
+
+    check(state.position_m.z < 2.0f, "state estimator downweights impossible position innovation");
+}
+
 void test_static_mlp_zero_weights() {
     auto weights = std::make_shared<flight_control::StaticMlpPolicyWeights>();
     flight_control::StaticMlpPolicy policy(weights);
@@ -208,6 +247,8 @@ int main() {
     test_model_adapter();
     test_state_estimator_stationary_observation();
     test_state_estimator_rejects_zero_imu();
+    test_state_estimator_yaw_observation();
+    test_state_estimator_downweights_position_outlier();
     test_static_mlp_zero_weights();
     test_adaptive_tcn_zero_weights();
     test_generated_policy_is_finite();

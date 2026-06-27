@@ -81,9 +81,17 @@ std::array<float, kModelInputDim> ModelAdapter::normalize_input(const std::array
     for (std::size_t frame = 0; frame < kHistoryFrames; ++frame) {
         const std::size_t offset = frame * kFrameDim;
         for (std::size_t axis = 0; axis < 3; ++axis) {
-            const float std_value = std::max(config_.normalization.omega_std[axis], 1e-4f);
+            const float error_std = std::max(config_.normalization.attitude_error_std[axis], 1e-4f);
+            normalized[offset + axis] =
+                (normalized[offset + axis] - config_.normalization.attitude_error_mean[axis]) / error_std;
+
+            const float omega_std = std::max(config_.normalization.omega_std[axis], 1e-4f);
             normalized[offset + 3 + axis] =
-                (normalized[offset + 3 + axis] - config_.normalization.omega_mean[axis]) / std_value;
+                (normalized[offset + 3 + axis] - config_.normalization.omega_mean[axis]) / omega_std;
+
+            const float action_std = std::max(config_.normalization.previous_action_std[axis], 1e-4f);
+            normalized[offset + 6 + axis] =
+                (normalized[offset + 6 + axis] - config_.normalization.previous_action_mean[axis]) / action_std;
         }
     }
     return normalized;

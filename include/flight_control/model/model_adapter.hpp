@@ -10,13 +10,21 @@ namespace flight_control {
 /**
  * 神经网络输入归一化参数。
  *
- * 目前只对角速度进行归一化，均值和标准差来自离线模型统计。
+ * 对姿态误差、角速度和上一帧动作分别归一化，参数来自离线随机化训练统计。
  */
 struct ModelNormalization {
+    /** 姿态误差均值，取四元数误差 xyz 分量。 */
+    std::array<float, 3> attitude_error_mean{0.0f, 0.0f, 0.0f};
+    /** 姿态误差标准差，取四元数误差 xyz 分量。 */
+    std::array<float, 3> attitude_error_std{1.0f, 1.0f, 1.0f};
     /** 角速度均值，单位 rad/s。 */
     std::array<float, 3> omega_mean{0.0f, 0.0f, 0.0f};
     /** 角速度标准差，单位 rad/s。 */
     std::array<float, 3> omega_std{1.0f, 1.0f, 1.0f};
+    /** 上一帧归一化动作均值。 */
+    std::array<float, 3> previous_action_mean{0.0f, 0.0f, 0.0f};
+    /** 上一帧归一化动作标准差。 */
+    std::array<float, 3> previous_action_std{1.0f, 1.0f, 1.0f};
 };
 
 /**

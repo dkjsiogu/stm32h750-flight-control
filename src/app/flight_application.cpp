@@ -108,7 +108,11 @@ void FlightApplication::control_loop() {
             command,
             kDefaultControlPeriodSec);
         const TorqueCommand torque = model_adapter_.update(telemetry_copy.state, attitude);
-        const MotorPwmFrame pwm = torque_controller_.mix(attitude.collective, torque, kDefaultControlPeriodSec);
+        const MotorPwmFrame pwm = torque_controller_.mix(
+            attitude.collective,
+            torque,
+            kDefaultControlPeriodSec,
+            telemetry_copy.state.battery_voltage_v);
 
         {
             CriticalSectionGuard lock(*deps_.critical_section);

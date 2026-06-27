@@ -25,8 +25,16 @@ struct TorqueControllerConfig {
     float pwm_max_us{2000.0f};
     /** 推力曲线指数，大于 1 表示低油门段单位 PWM 产生的推力更弱。 */
     float thrust_curve_exponent{1.13008f};
-    /** PWM 变化斜率限制，单位 us/s。 */
-    float pwm_slew_rate_us_per_sec{10438.4f};
+    /** PWM 变化斜率限制，单位 us/s；作为未单独配置升降斜率时的兼容默认值。 */
+    float pwm_slew_rate_us_per_sec{10626.0f};
+    /** PWM 上升斜率限制，单位 us/s，用于模拟电机加速滞后。 */
+    float pwm_accel_slew_rate_us_per_sec{8200.0f};
+    /** PWM 下降斜率限制，单位 us/s，用于模拟电机减速更快。 */
+    float pwm_decel_slew_rate_us_per_sec{15500.0f};
+    /** 标称电池电压，单位 V，用于推力到 PWM 的电压补偿。 */
+    float nominal_battery_voltage_v{16.0f};
+    /** 电压补偿强度，0 表示关闭，1 表示按电压平方完整补偿。 */
+    float battery_voltage_compensation_gain{0.85f};
 };
 
 /**
@@ -62,6 +70,16 @@ public:
      */
     MotorPwmFrame mix(float collective, const TorqueCommand& torque, float dt_sec);
     /**
+     * 使用总推力、力矩指令和当前电池电压进行混控。
+     *
+     * @param collective 归一化总推力，范围通常为 0 到 1。
+     * @param torque 机体系力矩指令。
+     * @param dt_sec 控制周期，单位秒。
+     * @param battery_voltage_v 当前电池电压，单位 V。
+     * @return 四路电机 PWM 输出。
+     */
+    MotorPwmFrame mix(float collective, const TorqueCommand& torque, float dt_sec, float battery_voltage_v);
+    /**
      * 使用总推力和机体系力矩向量进行混控。
      *
      * @param collective 归一化总推力，范围通常为 0 到 1。
@@ -70,6 +88,16 @@ public:
      * @return 四路电机 PWM 输出。
      */
     MotorPwmFrame mix(float collective, const Vector3& body_torque_nm, float dt_sec);
+    /**
+     * 使用总推力、机体系力矩向量和当前电池电压进行混控。
+     *
+     * @param collective 归一化总推力，范围通常为 0 到 1。
+     * @param body_torque_nm 机体系力矩，单位 N*m。
+     * @param dt_sec 控制周期，单位秒。
+     * @param battery_voltage_v 当前电池电压，单位 V。
+     * @return 四路电机 PWM 输出。
+     */
+    MotorPwmFrame mix(float collective, const Vector3& body_torque_nm, float dt_sec, float battery_voltage_v);
 
 private:
     /**
@@ -78,9 +106,10 @@ private:
      * @param thrust_n 目标推力，单位 N。
      * @param dt_sec 控制周期，单位秒。
      * @param motor_index 电机编号，用于访问上一帧 PWM。
+     * @param battery_voltage_v 当前电池电压，单位 V。
      * @return 电机对应的 PWM 脉宽，单位 us。
      */
-    float thrust_to_pwm(float thrust_n, float dt_sec, std::size_t motor_index);
+    float thrust_to_pwm(float thrust_n, float dt_sec, std::size_t motor_index, float battery_voltage_v);
 
     /** 力矩控制器配置。 */
     TorqueControllerConfig config_;

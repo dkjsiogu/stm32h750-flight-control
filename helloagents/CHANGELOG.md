@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.7.0] - 2026-06-28
+
+### Added
+
+- **[model]**: `AdaptiveTcnPolicy` 参数扩展到 363 维，新增四层 dilated residual TCN 分支，膨胀率为 `1/2/4/8`，用于在 64ms 历史窗口内增强多时间尺度扰动响应。
+- **[training]**: `flight_control_policy_search` 扩展训练/开发评估到 15 个随机化场景，并增强 INDI teacher 的目标加速度与角加速度项；最终采用 160 轮搜索中独立验证不退化的候选。
+
+### Changed
+
+- **[evaluation]**: 固定五场景保持 `5/5` 稳定，平均分为 `90.209/100`；随机验证 seed `20260629` 保持 `5/5` 稳定，平均分提升到 `87.679/100`，最弱场景分 `80.807`。
+- **[firmware]**: H743 stub 构建通过，当前 `flight_control_h743.elf` 的 `.text` 为 `79,264 bytes`。
+
 ## [0.6.0] - 2026-06-28
 
 ### Added

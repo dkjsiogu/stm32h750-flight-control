@@ -38,6 +38,14 @@ constexpr std::size_t kNonlinearScaleIndex = kGateStartIndex + kNonlinearParamsP
 constexpr std::size_t kRmaSummaryDim = 16U;
 /** RMA encoder 参数起始下标。 */
 constexpr std::size_t kRmaEncoderStartIndex = kNonlinearScaleIndex + 1U;
+/** 四层 dilated residual TCN 分支起始下标。 */
+constexpr std::size_t kDilatedTcnStartIndex = kRmaEncoderStartIndex + kAdaptiveTcnLatentDim * (kRmaSummaryDim + 1U);
+/** dilated residual TCN 层数，膨胀率依次为 1、2、4、8。 */
+constexpr std::size_t kDilatedLayerCount = 4U;
+/** 每个 dilated residual TCN 层的参数数量。 */
+constexpr std::size_t kDilatedParamsPerLayer = 6U;
+/** 每个轴的 dilated residual TCN 参数数量，最后一个参数为输出缩放。 */
+constexpr std::size_t kDilatedParamsPerAxis = kDilatedLayerCount * kDilatedParamsPerLayer + 1U;
 
 /**
  * 读取指定历史帧的指定值。
@@ -81,6 +89,36 @@ float dead_abs(float value, float threshold) {
  */
 float latent_squash(float value) {
     return std::tanh(std::clamp(value, -4.0f, 4.0f));
+}
+
+/**
+ * 计算单轴四层因果膨胀残差 TCN 分支。
+ *
+ * @param input 展平后的历史输入。
+ * @param params 策略参数。
+ * @param axis 当前控制轴。
+ * @return dilated residual TCN 的动作增量。
+ */
+float dilated_residual_tcn(
+    const std::array<float, kModelInputDim>& input,
+    const std::array<float, kAdaptiveTcnParameterCount>& params,
+    std::size_t axis) {
+    const std::size_t axis_offset = kDilatedTcnStartIndex + axis * kDilatedParamsPerAxis;
+    float residual = 0.0f;
+    for (std::size_t layer = 0; layer < kDilatedLayerCount; ++layer) {
+        const std::size_t dilation = 1U << layer;
+        const std::size_t frame = back(std::min<std::size_t>(dilation, kHistoryFrames - 1U));
+        const std::size_t offset = axis_offset + layer * kDilatedParamsPerLayer;
+        const float value =
+            params[offset + 0U] * frame_value(input, frame, axis) +
+            params[offset + 1U] * frame_value(input, frame, axis + 3U) +
+            params[offset + 2U] * frame_value(input, frame, axis + 9U) +
+            params[offset + 3U] * frame_value(input, frame, axis + 13U) +
+            params[offset + 4U] * residual +
+            params[offset + 5U];
+        residual += std::tanh(std::clamp(value, -5.0f, 5.0f));
+    }
+    return params[axis_offset + kDilatedLayerCount * kDilatedParamsPerLayer] * residual;
 }
 
 }  // namespace
@@ -138,7 +176,8 @@ std::array<float, kAdaptiveTcnOutputDim> AdaptiveTcnPolicy::predict(const std::a
             params[kLinearScaleIndex] * temporal +
             params[offset + kOutputBiasOffset] +
             params[kNonlinearScaleIndex] * nonlinear +
-            adaptation);
+            adaptation +
+            dilated_residual_tcn(input, params, axis));
     }
     return action;
 }

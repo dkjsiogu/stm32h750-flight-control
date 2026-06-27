@@ -11,7 +11,7 @@
 
 - 完整 STM32 飞控主链路：传感器采集、状态估计、速度外环、姿态模型、力矩混控、PWM 输出。
 - H743 可烧录工程骨架：ARM toolchain、启动文件、linker script、FreeRTOS 配置、newlib 桩、BSP/driver 接口。
-- 姿态控制器：固件内 `AdaptiveTcnPolicy`，使用 16 帧历史状态、16 维单帧输入、TCN 时间核、学习式 RMA latent encoder 和分组输入归一化。
+- 姿态控制器：固件内 `AdaptiveTcnPolicy`，使用 16 帧历史状态、16 维单帧输入、宽历史时间核、学习式 RMA latent encoder、四层 dilated residual TCN 分支和分组输入归一化。
 - 状态估计器：误差状态式姿态融合，支持外部姿态/yaw/速度/位置观测，带 NIS 风格软降权、陀螺零偏学习和机体系加速度慢偏学习。
 - 固件边界测试：防止 PC 仿真、训练、评估代码混入固件核心 target。
 
@@ -57,10 +57,10 @@ flowchart LR
 | 指标 | 结果 |
 |---|---:|
 | 稳定场景 | 5/5 |
-| 固定报告平均分 | 90.088/100 |
-| 固定报告最弱场景 | gust_recovery = 82.004 |
-| 随机验证 | 5/5 稳定，平均 87.462/100，最弱 80.768 |
-| H743 stub 镜像 text | 78,496 bytes |
+| 固定报告平均分 | 90.209/100 |
+| 固定报告最弱场景 | gust_recovery = 81.922 |
+| 随机验证 | 5/5 稳定，平均 87.679/100，最弱 80.807 |
+| H743 stub 镜像 text | 79,264 bytes |
 
 ## 目录结构
 

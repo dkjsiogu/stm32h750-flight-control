@@ -26,7 +26,7 @@ struct TorqueControllerConfig {
     /** 推力曲线指数，大于 1 表示低油门段单位 PWM 产生的推力更弱。 */
     float thrust_curve_exponent{1.13129938f};
     /** PWM 变化斜率限制，单位 us/s。 */
-    float pwm_slew_rate_us_per_sec{5656.46289f};
+    float pwm_slew_rate_us_per_sec{9159.46289f};
 };
 
 /**
